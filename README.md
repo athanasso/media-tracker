@@ -1,50 +1,255 @@
-# Welcome to your Expo app 👋
+# Media Tracker 📺🎬
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A comprehensive mobile app for tracking TV shows and movies. Built with React Native (Expo) and TypeScript.
 
-## Get started
+![React Native](https://img.shields.io/badge/React_Native-0.81-61DAFB?logo=react)
+![Expo](https://img.shields.io/badge/Expo_SDK-54-000020?logo=expo)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)
 
-1. Install dependencies
+## ✨ Features
 
+### 📱 Core Features
+- **Discover** - Browse trending TV shows and movies with beautiful horizontal scrolls
+- **Search** - Find any show or movie using the TMDB API with debounced search
+- **Details** - View posters, synopses, cast, seasons, and episode lists
+- **Track** - Add shows/movies to your watchlist with one tap
+- **Watch Progress** - Mark episodes as watched with visual progress tracking
+- **Profile** - Comprehensive watchlist management with multiple views and filters
+
+### 📊 Profile & Watchlist Management
+
+#### TV Shows & Movies Tabs
+Each tab (TV Shows and Movies) includes three sub-tabs:
+
+- **Watched** - View all shows/movies you've completed or are currently watching
+- **Watchlist** - See all your tracked content in one place
+- **Upcoming** - Discover upcoming releases from your "plan to watch" list with air/release dates
+
+#### Plan to Watch Tab
+A dedicated tab showing all items you plan to watch, with sub-tabs:
+- **All** - Combined view of shows and movies
+- **Shows** - TV shows only
+- **Movies** - Movies only
+
+#### Search & Sort
+- **Search** - Real-time search across all tabs and sub-tabs
+- **Sort Options** - Sort by Name, Date, Status, or Added date
+- Works seamlessly across all views
+
+### 🔔 Push Notifications
+- **Release Date Reminders** - Get notified before upcoming releases
+- **Customizable Timing** - Choose when to be notified:
+  - 1 hour before
+  - 1 day before
+  - 3 days before
+  - 1 week before
+  - 2 weeks before
+  - 1 month before
+- **Easy Management** - Set, change, or remove notifications directly from upcoming items
+- **Visual Indicators** - See which items have notifications set
+
+### 🎨 UI/UX
+- Dark mode theme with red accent (#E50914)
+- Beautiful poster cards with progress overlays
+- Horizontal season selector with progress bars
+- Episode checkboxes for quick tracking
+- Pull-to-refresh on all screens
+- Smooth animations and transitions
+- Intuitive tab navigation
+
+### 💾 Data Management
+- **Persistent Storage** - All data saved locally with AsyncStorage
+- **Export Backup** - Export your watchlist to JSON file
+- **Import Restore** - Restore from backup with merge or replace options
+- **Offline Support** - Cached data available offline
+- **TV Time Import** - Import your watchlist from TV Time
+
+### 📈 Tracking Features
+- **Status Management** - Track with statuses:
+  - Watching
+  - Completed
+  - Plan to Watch
+  - On Hold
+  - Dropped
+- **Episode Tracking** - Mark individual episodes or entire seasons as watched
+- **Progress Visualization** - See your progress with visual indicators
+- **Statistics** - View counts for shows, movies, and plan to watch items
+
+## 🛠️ Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| Framework | React Native with Expo SDK 54 |
+| Navigation | Expo Router (file-based) |
+| State Management | Zustand with persistence |
+| Data Fetching | TanStack Query (React Query) |
+| Styling | NativeWind (Tailwind CSS) + StyleSheet |
+| API | The Movie Database (TMDB) |
+| Notifications | Expo Notifications |
+| Language | TypeScript |
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+- Expo CLI (`npm install -g expo-cli`)
+- TMDB API Key ([Get one free](https://www.themoviedb.org/settings/api))
+
+### Installation
+
+1. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. Start the app
-
-   ```bash
-   npx expo start
+2. **Configure API Key**
+   
+   Create a `.env` file in the root directory:
+   ```env
+   EXPO_PUBLIC_TMDB_API_KEY=your_api_key_here
    ```
 
-In the output, you'll find options to open the app in a
+3. **Start development server**
+   ```bash
+   npm start
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+4. **Run the app**
+   - Press `a` for Android emulator
+   - Press `i` for iOS simulator
+   - Scan QR code with Expo Go app on your device
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 📱 Screens
 
-## Get a fresh project
+| Screen | Description |
+|--------|-------------|
+| **Discover** | Featured banner, trending shows/movies with horizontal scrolls |
+| **Search** | Multi-search with real-time results and debouncing |
+| **Profile** | Comprehensive watchlist management with tabs, search, and sort |
+| **Show Details** | Full info, cast, seasons, episodes with tracking and progress |
+| **Movie Details** | Full info, cast, watch status, and tracking |
+| **Settings** | Import/export data, preferences, and app configuration |
 
-When you're ready, run:
+## 🎯 Key Features Explained
+
+### Profile Screen
+The Profile screen is your central hub for managing your watchlist:
+
+- **Main Tabs**: TV Shows, Movies, Plan to Watch
+- **Sub-Tabs**: Each main tab has Watched, Watchlist, and Upcoming (except Plan to Watch which has All, Shows, Movies)
+- **Search Bar**: Filter items by name across all tabs
+- **Sort Menu**: Sort by Name, Date, Status, or Added date
+- **Statistics Cards**: Quick view of total shows, movies, and plan to watch items
+
+### Upcoming Items
+Upcoming items show only content from your "plan to watch" list that has future air/release dates:
+- Automatically fetches details to get accurate dates
+- Displays air date for shows and release date for movies
+- Notification button to set reminders
+- Visual indicator when notifications are active
+
+### Notifications
+- Request permission on first launch
+- Schedule notifications based on release dates
+- Manage notifications directly from item cards
+- Change timing or remove notifications anytime
+- Notifications persist across app restarts
+
+## 📤 Import/Export
+
+### Export Your Data
+1. Go to Profile → Settings
+2. Tap "Export Data"
+3. Share/save the JSON backup file
+
+### Import Your Data
+1. Go to Profile → Settings
+2. Tap "Import Data"
+3. Select your backup JSON file
+4. Choose "Merge" or "Replace All"
+
+### TV Time Import
+Import your existing watchlist from TV Time:
+1. Go to Profile → Settings
+2. Tap "Import from TV Time"
+3. Select your TV Time export file
+4. Your shows and movies will be imported with their statuses
+
+## 🔧 Scripts
 
 ```bash
-npm run reset-project
+npm start          # Start Expo dev server
+npm run android    # Run on Android
+npm run ios        # Run on iOS
+npm run web        # Run in browser
+npm run lint       # Run ESLint
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 📄 API Endpoints Used
 
-## Learn more
+- `GET /trending/{media_type}/{time_window}` - Trending content
+- `GET /tv/{id}` - TV show details
+- `GET /movie/{id}` - Movie details
+- `GET /tv/{id}/season/{season}` - Season episodes
+- `GET /search/multi` - Multi-search
+- `GET /tv/popular` - Popular shows
+- `GET /movie/popular` - Popular movies
+- `GET /tv/on_the_air` - Upcoming shows
+- `GET /movie/upcoming` - Upcoming movies
+- `GET /discover/tv` - Discover shows with filters
+- `GET /discover/movie` - Discover movies with filters
 
-To learn more about developing your project with Expo, look at the following resources:
+## 🎨 Design System
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Colors
+- **Primary**: #E50914 (Red)
+- **Background**: #0a0a0a (Dark)
+- **Surface**: #1a1a1a (Dark Gray)
+- **Text**: #ffffff (White)
+- **Text Secondary**: #a0a0a0 (Light Gray)
+- **Success**: #22c55e (Green)
 
-## Join the community
+### Status Colors
+- **Watching**: Green (#22c55e)
+- **Completed**: Blue (#3b82f6)
+- **Plan to Watch**: Orange (#f59e0b)
+- **On Hold**: Purple (#8b5cf6)
+- **Dropped**: Red (#ef4444)
 
-Join our community of developers creating universal apps.
+## 📦 Project Structure
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```
+media-tracker/
+├── app/                    # Expo Router pages
+│   ├── (tabs)/            # Tab navigation screens
+│   │   ├── discover.tsx   # Discover screen
+│   │   ├── search.tsx     # Search screen
+│   │   └── profile.tsx    # Profile/watchlist screen
+│   ├── show/[id].tsx      # Show details
+│   ├── movie/[id].tsx     # Movie details
+│   └── settings.tsx        # Settings screen
+├── src/
+│   ├── store/             # Zustand stores
+│   │   ├── useWatchlistStore.ts
+│   │   └── useNotificationStore.ts
+│   ├── services/          # API and utility services
+│   │   ├── api/           # TMDB API client
+│   │   ├── dataExport.ts  # Export functionality
+│   │   └── tvTimeImport.ts # TV Time import
+│   ├── types/             # TypeScript types
+│   └── hooks/             # Custom React hooks
+└── assets/                # Images and static assets
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📝 License
+
+MIT License - feel free to use this project for learning or building your own app!
+
+---
+
+Made with ❤️ using React Native and Expo
