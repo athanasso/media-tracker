@@ -8,15 +8,15 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { Stack } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Linking,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -26,17 +26,17 @@ import { useWatchlistStore } from '@/src/store';
 
 // Theme colors
 const Colors = {
-  background: '#121212',
-  surface: '#1E1E1E',
-  surfaceLight: '#2A2A2A',
-  primary: '#F5C518',
+  background: '#0a0a0a',
+  surface: '#1a1a1a',
+  surfaceLight: '#2a2a2a',
+  primary: '#E50914',
   textPrimary: '#FFFFFF',
-  textSecondary: '#A0A0A0',
+  textSecondary: '#a0a0a0',
   textMuted: '#666666',
-  success: '#22C55E',
-  error: '#EF4444',
-  warning: '#F59E0B',
-  border: '#3A3A3A',
+  success: '#22c55e',
+  error: '#ef4444',
+  warning: '#f59e0b',
+  border: '#333333',
 };
 
 export default function SettingsScreen() {
@@ -128,6 +128,11 @@ export default function SettingsScreen() {
 
   const handleOpenTMDB = () => {
     Linking.openURL('https://www.themoviedb.org/');
+  };
+
+  // New handler for opening the repo
+  const handleOpenRepo = () => {
+    Linking.openURL('https://github.com/athanasso/media-tracker');
   };
 
   return (
@@ -254,6 +259,18 @@ export default function SettingsScreen() {
               <View style={styles.menuContent}>
                 <Text style={styles.menuTitle}>TMDB</Text>
                 <Text style={styles.menuSubtitle}>Data provided by The Movie Database</Text>
+              </View>
+              <Ionicons name="open-outline" size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
+
+            {/* GitHub Repository Link - ADDED HERE */}
+            <TouchableOpacity style={styles.menuItem} onPress={handleOpenRepo}>
+              <View style={[styles.iconContainer, { backgroundColor: Colors.textPrimary + '20' }]}>
+                <Ionicons name="logo-github" size={22} color={Colors.textPrimary} />
+              </View>
+              <View style={styles.menuContent}>
+                <Text style={styles.menuTitle}>GitHub Repository</Text>
+                <Text style={styles.menuSubtitle}>athanasso/media-tracker</Text>
               </View>
               <Ionicons name="open-outline" size={18} color={Colors.textMuted} />
             </TouchableOpacity>
