@@ -2,13 +2,13 @@
  * Profile Screen - Watchlist Management
  */
 
-import { getPosterUrl } from '@/src/services/api/client';
 import { getMovieDetails, getShowDetails } from '@/src/services/api';
+import { getPosterUrl } from '@/src/services/api/client';
 import { useNotificationStore, useWatchlistStore } from '@/src/store';
 import { TrackedMovie, TrackedShow, TrackingStatus } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
 import { useQuery } from '@tanstack/react-query';
+import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -68,14 +68,21 @@ export default function ProfileScreen() {
   const planToWatchMovies = useMemo(() => trackedMovies.filter(m => m.status === 'plan_to_watch'), [trackedMovies]);
 
   // Fetch details for upcoming shows to get air dates
-  const upcomingShowIds = useMemo(() => 
-    showsSubTab === 'upcoming' ? planToWatchShows.map(s => s.showId) : [],
-    [showsSubTab, planToWatchShows]
+  // Get shows that might have upcoming episodes (Plan to Watch, Watching, Completed)
+  const upcomingCandidateShows = useMemo(() => 
+    trackedShows.filter(s => ['plan_to_watch', 'watching', 'completed'].includes(s.status)), 
+    [trackedShows]
   );
 
   const upcomingMovieIds = useMemo(() => 
     moviesSubTab === 'upcoming' ? planToWatchMovies.map(m => m.movieId) : [],
     [moviesSubTab, planToWatchMovies]
+  );
+
+  // Fetch show details for upcoming shows
+  const upcomingShowIds = useMemo(() => 
+    showsSubTab === 'upcoming' ? upcomingCandidateShows.map(s => s.showId) : [],
+    [showsSubTab, upcomingCandidateShows]
   );
 
   // Fetch show details for upcoming shows
@@ -267,7 +274,7 @@ export default function ProfileScreen() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      shows = planToWatchShows
+      shows = upcomingCandidateShows
         .map(show => {
           const details = showDetailsMap.get(show.showId);
           if (!details) return null;
@@ -331,7 +338,8 @@ export default function ProfileScreen() {
 
   // Get filtered and sorted plan to watch items
   const getFilteredPlanItems = () => {
-    let items: ((TrackedShow | TrackedMovie) & { type: 'show' | 'movie' })[] = [];
+    type PlanItem = (TrackedShow & { type: 'show' }) | (TrackedMovie & { type: 'movie' });
+    let items: PlanItem[] = [];
 
     if (planSubTab === 'shows') {
       items = planToWatchShows.map(s => ({ ...s, type: 'show' as const }));
@@ -698,7 +706,7 @@ export default function ProfileScreen() {
               // Use index to ensure uniqueness even if somehow duplicates exist
               return `${prefix}-${id}-idx${index}`;
             }}
-            renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as any }) : renderMovieItem({ item: item as any })}
+            renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item }) : renderMovieItem({ item: item })}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="bookmark-outline" size={64} color={Colors.textSecondary} /><Text style={styles.emptyText}>No items in your plan to watch</Text></View>}
           />
