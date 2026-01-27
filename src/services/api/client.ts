@@ -3,6 +3,7 @@
  * Axios instance with interceptors and error handling
  */
 
+import { useSettingsStore } from '@/src/store/useSettingsStore';
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { TMDBErrorResponse } from '../../types';
 
@@ -68,10 +69,13 @@ const createApiClient = (): AxiosInstance => {
         console.warn('TMDB API key not found in environment variables');
       }
 
+      const language = useSettingsStore.getState().language;
+
       // Add API key as query parameter (v3 auth)
       config.params = {
         ...config.params,
         api_key: apiKey,
+        language: language,
       };
 
       // Optional: Add Bearer token for v4 auth

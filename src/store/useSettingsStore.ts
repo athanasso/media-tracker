@@ -8,13 +8,16 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type DateFormat = 'eu' | 'us' | 'custom';
+export type Language = 'en' | 'el';
 
 interface SettingsState {
   dateFormat: DateFormat;
   customDateFormat: string; // Used only if dateFormat is 'custom'
+  language: Language;
   
   setDateFormat: (format: DateFormat) => void;
   setCustomDateFormat: (format: string) => void;
+  setLanguage: (lang: Language) => void;
   getFormattedDate: (dateString: string | Date | null | undefined) => string;
 }
 
@@ -23,9 +26,11 @@ export const useSettingsStore = create<SettingsState>()(
     (set, get) => ({
       dateFormat: 'eu', // Default to European DD/MM/YYYY
       customDateFormat: 'DD/MM/YYYY',
+      language: 'en',
 
       setDateFormat: (format) => set({ dateFormat: format }),
       setCustomDateFormat: (format) => set({ customDateFormat: format }),
+      setLanguage: (lang) => set({ language: lang }),
 
       // Helper to format date based on current settings
       getFormattedDate: (dateInput) => {

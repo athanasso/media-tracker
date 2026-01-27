@@ -21,7 +21,8 @@ import {
 } from 'react-native';
 
 import { useShowDetails } from '@/src/hooks/useShowDetails';
-import { getBackdropUrl, getPosterUrl, getProfileUrl, getStillUrl } from '@/src/services/api/client';
+import { strings } from '@/src/i18n/strings';
+import { getBackdropUrl, getPosterUrl, getProfileUrl } from '@/src/services/api/client';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
 import { CastMember, Episode, Genre } from '@/src/types';
 
@@ -50,9 +51,12 @@ export default function ShowDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const showId = parseInt(id, 10);
-  const getFormattedDate = useSettingsStore((state) => state.getFormattedDate);
+  const { getFormattedDate, language } = useSettingsStore();
+
+  const t = strings[language] || strings.en;
   
   const [selectedSeason, setSelectedSeason] = useState(1);
+  const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
 
   // Fetch show and season data using custom hook
   const { show, season, isLoadingShow, isLoadingSeason, isError } = useShowDetails({
@@ -153,7 +157,7 @@ export default function ShowDetailsScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Loading show details...</Text>
+        <Text style={styles.loadingText}>{t.loadingShow}</Text>
       </View>
     );
   }
@@ -163,9 +167,9 @@ export default function ShowDetailsScreen() {
     return (
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle-outline" size={64} color={Colors.textSecondary} />
-        <Text style={styles.errorText}>Failed to load show</Text>
+        <Text style={styles.errorText}>{t.failedLoadShow}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
-          <Text style={styles.retryButtonText}>Go Back</Text>
+          <Text style={styles.retryButtonText}>{t.goBack}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -173,7 +177,7 @@ export default function ShowDetailsScreen() {
 
   // Extract data
   const releaseYear = show.first_air_date?.split('-')[0] || 'TBA';
-  const endYear = show.status === 'Ended' ? show.last_air_date?.split('-')[0] : 'Present';
+  const endYear = show.status === 'Ended' ? show.last_air_date?.split('-')[0] : t.present;
   const genres = show.genres || [];
   const cast = show.credits?.cast?.slice(0, 10) || [];
   const seasons = show.seasons?.filter((s) => s.season_number > 0) || [];
@@ -221,12 +225,12 @@ export default function ShowDetailsScreen() {
                 {show.name}
               </Text>
               <Text style={styles.showMeta}>
-                {releaseYear} - {endYear} • {show.number_of_seasons} Season{show.number_of_seasons !== 1 ? 's' : ''}
+                {releaseYear} - {endYear} • {show.number_of_seasons} {show.number_of_seasons !== 1 ? t.seasons : t.season}
               </Text>
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={16} color="#FFD700" />
                 <Text style={styles.ratingText}>{show.vote_average?.toFixed(1)}</Text>
-                <Text style={styles.voteCount}>({show.vote_count?.toLocaleString()} votes)</Text>
+                <Text style={styles.voteCount}>({show.vote_count?.toLocaleString()} {t.votes})</Text>
               </View>
             </View>
           </View>
@@ -248,17 +252,12 @@ export default function ShowDetailsScreen() {
         {/* ===== ACTION BUTTONS ===== */}
         <View style={styles.actionsContainer}>
           <TouchableOpacity
-            style={[styles.actionButton, isTracked && styles.actionButtonActive]}
+            style={[styles.actionButton, isTracked && styles.trackedButton]}
             onPress={handleToggleTracking}
-            activeOpacity={0.8}
           >
-            <Ionicons 
-              name={isTracked ? 'checkmark-circle' : 'add-circle-outline'} 
-              size={22} 
-              color={Colors.text} 
-            />
+            <Ionicons name={isTracked ? "checkmark" : "add"} size={20} color={Colors.text} />
             <Text style={styles.actionButtonText}>
-              {isTracked ? 'Tracking' : 'Add to Watchlist'}
+              {isTracked ? t.untrackShow : t.trackShow}
             </Text>
           </TouchableOpacity>
           
@@ -272,20 +271,20 @@ export default function ShowDetailsScreen() {
 
         {/* ===== SUMMARY ===== */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Summary</Text>
-          <Text style={styles.summaryText}>
-            {show.overview || 'No summary available for this show.'}
+          <Text style={styles.sectionTitle}>{t.overview}</Text>
+          <Text style={styles.overview} numberOfLines={isOverviewExpanded ? undefined : 4}>
+            {show.overview || t.noDesc}
           </Text>
         </View>
 
         {/* ===== CAST ===== */}
         {cast.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Cast</Text>
+            <Text style={styles.sectionTitle}>{t.topCast}</Text>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false} 
-              contentContainerStyle={styles.castContainer}
+              contentContainerStyle={styles.castScroll}
             >
               {cast.map((member: CastMember) => (
                 <View key={member.credit_id} style={styles.castCard}>
@@ -307,15 +306,16 @@ export default function ShowDetailsScreen() {
 
         {/* ===== SEASONS SELECTOR ===== */}
         {seasons.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.seasonHeader}>
-              <Text style={styles.sectionTitle}>Seasons</Text>
-              {seasonProgress > 0 && (
-                <View style={styles.seasonProgressBadge}>
-                  <Text style={styles.seasonProgressText}>{seasonProgress}% complete</Text>
-                </View>
-              )}
-            </View>
+          <View style={styles.seasonSection}>
+          <View style={styles.seasonHeader}>
+            <Text style={styles.sectionTitle}>{t.seasons}</Text>
+            {seasonProgress === 100 && (
+              <View style={styles.seasonBadge}>
+                <Ionicons name="checkmark-circle" size={14} color={Colors.success} style={{ marginRight: 4 }} />
+                <Text style={styles.seasonBadgeText}>{t.watched}</Text>
+              </View>
+            )}
+          </View>
             
             <ScrollView 
               horizontal 
@@ -328,26 +328,14 @@ export default function ShowDetailsScreen() {
                 
                 return (
                   <TouchableOpacity
-                    key={s.id}
-                    style={[
-                      styles.seasonCard,
-                      isSelected && styles.seasonCardActive,
-                    ]}
-                    onPress={() => setSelectedSeason(s.season_number)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.seasonNumber, isSelected && styles.seasonNumberActive]}>
-                      S{s.season_number}
-                    </Text>
-                    <Text style={[styles.seasonEpisodes, isSelected && styles.seasonEpisodesActive]}>
-                      {s.episode_count} eps
-                    </Text>
-                    {progress > 0 && (
-                      <View style={styles.seasonProgressBar}>
-                        <View style={[styles.seasonProgressFill, { width: `${progress}%` }]} />
-                      </View>
-                    )}
-                  </TouchableOpacity>
+                key={s.id}
+                style={[styles.seasonChip, selectedSeason === s.season_number && styles.seasonChipActive]}
+                onPress={() => setSelectedSeason(s.season_number)}
+              >
+                <Text style={[styles.seasonChipText, selectedSeason === s.season_number && styles.seasonChipTextActive]}>
+                  {t.season} {s.season_number}
+                </Text>
+              </TouchableOpacity>
                 );
               })}
             </ScrollView>
@@ -356,20 +344,26 @@ export default function ShowDetailsScreen() {
 
         {/* ===== EPISODES LIST ===== */}
         <View style={styles.section}>
-          <View style={styles.episodesHeader}>
-            <Text style={styles.sectionTitle}>
-              Season {selectedSeason} Episodes
-            </Text>
-            {episodes.length > 0 && (
-              <TouchableOpacity 
-                style={styles.markAllButton}
-                onPress={handleMarkSeasonWatched}
-              >
-                <Ionicons name="checkmark-done" size={16} color={Colors.primary} />
-                <Text style={styles.markAllText}>Mark All</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+              <View style={styles.episodesHeader}>
+                <Text style={styles.episodesTitle}>
+                  {t.episodes} ({episodes.length})
+                </Text>
+                
+                {seasonProgress < 100 && (
+                  <TouchableOpacity 
+                    style={styles.markSeasonButton}
+                    onPress={() => markSeasonWatched(showId, selectedSeason, episodes.map(e => ({
+                      showId,
+                      seasonNumber: selectedSeason,
+                      episodeNumber: e.episode_number,
+                      episodeId: e.id,
+                      watchedAt: new Date().toISOString() // Assuming current time, store will handle it
+                    })))}
+                  >
+                    <Text style={styles.markSeasonText}>{t.markSeasonWatched}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
 
           {isLoadingSeason ? (
             <View style={styles.episodesLoading}>
@@ -399,44 +393,16 @@ export default function ShowDetailsScreen() {
                     disabled={!hasAired}
                   >
                     {/* Episode Thumbnail */}
-                    <View style={styles.episodeThumbnailContainer}>
-                      <Image
-                        source={{ 
-                          uri: getStillUrl(episode.still_path, 'medium') || 
-                               getPosterUrl(show.poster_path, 'small') || ''
-                        }}
-                        style={styles.episodeThumbnail}
-                        resizeMode="cover"
-                      />
-                      {!hasAired && (
-                        <View style={styles.upcomingBadge}>
-                          <Text style={styles.upcomingText}>UPCOMING</Text>
-                        </View>
-                      )}
+                    <View style={styles.episodeMain}>
+                    <View style={styles.episodeNumber}>
+                      <Text style={styles.episodeNumberText}>{episode.episode_number}</Text>
                     </View>
-
-                    {/* Episode Info */}
-                    <View style={styles.episodeContent}>
-                      <View style={styles.episodeTitleRow}>
-                        <Text style={styles.episodeNumber}>E{episode.episode_number}</Text>
-                        <Text style={[styles.episodeTitle, !hasAired && styles.episodeTitleMuted]} numberOfLines={1}>
-                          {episode.name}
-                        </Text>
-                      </View>
-                      
+                    <View style={styles.episodeInfo}>
+                      <Text style={styles.episodeTitle}>{episode.name}</Text>
                       {episode.air_date && (
-                        <Text style={styles.episodeDate}>
-                          {getFormattedDate(episode.air_date)}
-                          {episode.runtime && ` • ${episode.runtime} min`}
-                        </Text>
+                        <Text style={styles.episodeDate}>{getFormattedDate(episode.air_date)}</Text>
                       )}
-                      
-                      <Text style={styles.episodeOverview} numberOfLines={2}>
-                        {episode.overview || 'No description available.'}
-                      </Text>
                     </View>
-
-                    {/* Watched Checkbox */}
                     <TouchableOpacity
                       style={[
                         styles.watchedCheckbox,
@@ -453,6 +419,7 @@ export default function ShowDetailsScreen() {
                         <View style={styles.checkboxEmpty} />
                       )}
                     </TouchableOpacity>
+                  </View>
                   </Pressable>
                 );
               })}
@@ -698,68 +665,59 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  overview: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    lineHeight: 22,
+  },
+  
   // Seasons
+  seasonSection: {
+    marginBottom: 24,
+  },
   seasonHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
+    paddingHorizontal: 16,
   },
-  seasonProgressBadge: {
-    backgroundColor: Colors.successDark,
-    paddingHorizontal: 10,
+  seasonBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 6,
   },
-  seasonProgressText: {
+  seasonBadgeText: {
     fontSize: 11,
+    color: Colors.success,
     fontWeight: '600',
-    color: Colors.text,
   },
   seasonScroll: {
+    paddingHorizontal: 16,
     gap: 10,
   },
-  seasonCard: {
-    width: 80,
+  seasonChip: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  seasonCardActive: {
-    backgroundColor: Colors.surfaceLight,
+  seasonChipActive: {
+    backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  seasonNumber: {
-    fontSize: 18,
-    fontWeight: '700',
+  seasonChipText: {
+    fontSize: 14,
     color: Colors.textSecondary,
+    fontWeight: '600',
   },
-  seasonNumberActive: {
+  seasonChipTextActive: {
     color: Colors.text,
-  },
-  seasonEpisodes: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    marginTop: 4,
-  },
-  seasonEpisodesActive: {
-    color: Colors.textSecondary,
-  },
-  seasonProgressBar: {
-    width: '100%',
-    height: 3,
-    backgroundColor: Colors.surfaceElevated,
-    borderRadius: 2,
-    marginTop: 8,
-    overflow: 'hidden',
-  },
-  seasonProgressFill: {
-    height: '100%',
-    backgroundColor: Colors.success,
-    borderRadius: 2,
   },
 
   // Episodes
@@ -767,28 +725,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
-  markAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
+  episodesTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  markSeasonButton: {
+    backgroundColor: Colors.surfaceElevated,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: Colors.surface,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  markAllText: {
+  markSeasonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.primary,
+    color: Colors.text,
   },
   episodesLoading: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
     gap: 12,
+    paddingVertical: 32,
   },
   episodesLoadingText: {
     fontSize: 14,
@@ -805,9 +768,9 @@ const styles = StyleSheet.create({
   },
   episodesList: {
     gap: 12,
+    paddingHorizontal: 16,
   },
   episodeCard: {
-    flexDirection: 'row',
     backgroundColor: Colors.surface,
     borderRadius: 12,
     overflow: 'hidden',
@@ -820,75 +783,53 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: Colors.success,
   },
-  episodeThumbnailContainer: {
-    width: 120,
-    height: 80,
-    position: 'relative',
-  },
-  episodeThumbnail: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: Colors.surfaceLight,
-  },
-  upcomingBadge: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    backgroundColor: Colors.warning,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  upcomingText: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  episodeContent: {
-    flex: 1,
-    padding: 10,
-    justifyContent: 'center',
-  },
-  episodeTitleRow: {
+  episodeMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    padding: 12,
+    gap: 12,
   },
   episodeNumber: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
     backgroundColor: Colors.surfaceElevated,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    minWidth: 28,
+    alignItems: 'center',
+  },
+  episodeNumberText: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  episodeInfo: {
+    flex: 1,
+    gap: 2,
   },
   episodeTitle: {
-    flex: 1,
     fontSize: 14,
     fontWeight: '600',
     color: Colors.text,
   },
-  episodeTitleMuted: {
-    color: Colors.textMuted,
-  },
   episodeDate: {
     fontSize: 11,
     color: Colors.textMuted,
-    marginBottom: 4,
   },
   episodeOverview: {
     fontSize: 12,
     color: Colors.textSecondary,
-    lineHeight: 16,
+    lineHeight: 18,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
   },
 
   // Watched Checkbox
   watchedCheckbox: {
-    width: 44,
+    width: 32,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 16,
     backgroundColor: Colors.surfaceLight,
   },
   watchedCheckboxActive: {
@@ -899,10 +840,16 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   checkboxEmpty: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     borderWidth: 2,
     borderColor: Colors.textMuted,
+  },
+  trackedButton: {
+    backgroundColor: Colors.success,
+  },
+  castScroll: {
+    gap: 12,
   },
 });

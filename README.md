@@ -63,6 +63,11 @@ A dedicated tab showing all items you plan to watch, with sub-tabs:
 - **Import Restore** - Restore from backup with merge or replace options
 - **Offline Support** - Cached data available offline
 - **TV Time Import** - Import your watchlist from TV Time
+67: 
+68: ### 🌍 Localization & Regional Settings
+69: - **Multi-language Support** - Fully localized in English and Greek
+70: - **Date Formats** - Choose between European (DD/MM/YYYY), American (MM/DD/YYYY), or Custom formats
+71: - **Localized Content** - Movie/Show descriptions and titles automatically displayed in your selected language (via TMDB)
 
 ### 📈 Tracking Features
 - **Status Management** - Track with statuses:
@@ -86,6 +91,7 @@ A dedicated tab showing all items you plan to watch, with sub-tabs:
 | Styling | NativeWind (Tailwind CSS) + StyleSheet |
 | API | The Movie Database (TMDB) |
 | Notifications | Expo Notifications |
+| Localization | Custom i18n implementation |
 | Language | TypeScript |
 
 ## 🚀 Getting Started
@@ -129,7 +135,7 @@ A dedicated tab showing all items you plan to watch, with sub-tabs:
 | **Profile** | Comprehensive watchlist management with tabs, search, and sort |
 | **Show Details** | Full info, cast, seasons, episodes with tracking and progress |
 | **Movie Details** | Full info, cast, watch status, and tracking |
-| **Settings** | Import/export data, preferences, and app configuration |
+| **Settings** | Language, date format, import/export data, and app configuration |
 
 ## 🎯 Key Features Explained
 
@@ -232,11 +238,13 @@ media-tracker/
 ├── src/
 │   ├── store/             # Zustand stores
 │   │   ├── useWatchlistStore.ts
-│   │   └── useNotificationStore.ts
+│   │   ├── useNotificationStore.ts
+│   │   └── useSettingsStore.ts
 │   ├── services/          # API and utility services
 │   │   ├── api/           # TMDB API client
 │   │   ├── dataExport.ts  # Export functionality
 │   │   └── tvTimeImport.ts # TV Time import
+│   ├── i18n/              # Localization strings
 │   ├── types/             # TypeScript types
 │   └── hooks/             # Custom React hooks
 └── assets/                # Images and static assets

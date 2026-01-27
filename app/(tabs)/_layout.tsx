@@ -3,6 +3,8 @@
  * Bottom tabs: Discover, Search, Profile
  */
 
+import { strings } from '@/src/i18n/strings';
+import { useSettingsStore } from '@/src/store';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
@@ -20,6 +22,9 @@ const Colors = {
 };
 
 export default function TabLayout() {
+  const language = useSettingsStore(state => state.language);
+  const t = strings[language] || strings.en;
+
   return (
     <Tabs
       screenOptions={{
@@ -44,7 +49,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="discover"
         options={{
-          title: 'Discover',
+          title: t.discover,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons 
               name={focused ? 'compass' : 'compass-outline'} 
@@ -59,7 +64,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="search"
         options={{
-          title: 'Search',
+          title: t.search,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons 
               name={focused ? 'search' : 'search-outline'} 
@@ -74,7 +79,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t.profile,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons 
               name={focused ? 'person' : 'person-outline'} 

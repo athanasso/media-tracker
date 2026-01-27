@@ -9,9 +9,10 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { strings } from '@/src/i18n/strings';
 import { getMovieDetails } from '@/src/services/api';
 import { getBackdropUrl, getPosterUrl, getProfileUrl } from '@/src/services/api/client';
-import { useWatchlistStore } from '@/src/store';
+import { useSettingsStore, useWatchlistStore } from '@/src/store';
 import { CastMember } from '@/src/types';
 
 const Colors = {
@@ -26,6 +27,8 @@ const Colors = {
 export default function MovieDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const movieId = parseInt(id, 10);
+  const language = useSettingsStore((state) => state.language);
+  const t = strings[language] || strings.en;
 
   // Subscribe to the actual state arrays to trigger re-renders
   const trackedMovies = useWatchlistStore((state) => state.trackedMovies);
@@ -69,7 +72,7 @@ export default function MovieDetailsScreen() {
   }
 
   if (!movie) {
-    return <View style={styles.loading}><Text style={styles.errorText}>Movie not found</Text></View>;
+    return <View style={styles.loading}><Text style={styles.errorText}>{t.movieNotFound}</Text></View>;
   }
 
   const runtime = movie.runtime ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m` : 'N/A';
@@ -110,24 +113,24 @@ export default function MovieDetailsScreen() {
         <View style={styles.actions}>
           <TouchableOpacity style={[styles.actionButton, isTracked && styles.trackedButton]} onPress={handleToggleTracking}>
             <Ionicons name={isTracked ? 'checkmark' : 'add'} size={20} color={Colors.text} />
-            <Text style={styles.actionButtonText}>{isTracked ? 'In Watchlist' : 'Add to Watchlist'}</Text>
+            <Text style={styles.actionButtonText}>{isTracked ? t.inWatchlist : t.addToWatchlist}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, styles.watchedButton, watched && styles.watchedActiveButton]} onPress={handleToggleWatched}>
             <Ionicons name={watched ? 'eye' : 'eye-outline'} size={20} color={Colors.text} />
-            <Text style={styles.actionButtonText}>{watched ? 'Watched' : 'Mark Watched'}</Text>
+            <Text style={styles.actionButtonText}>{watched ? t.watched : t.markWatched}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Overview */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Overview</Text>
-          <Text style={styles.overview}>{movie.overview}</Text>
+          <Text style={styles.sectionTitle}>{t.overview}</Text>
+          <Text style={styles.overview}>{movie.overview || t.noDesc}</Text>
         </View>
 
         {/* Cast */}
         {movie.credits?.cast && movie.credits.cast.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Cast</Text>
+            <Text style={styles.sectionTitle}>{t.cast}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castList}>
               {movie.credits.cast.slice(0, 10).map((member: CastMember) => (
                 <View key={member.id} style={styles.castItem}>

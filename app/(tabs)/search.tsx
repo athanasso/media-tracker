@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { strings } from '@/src/i18n/strings';
 import { getTrendingAll, searchMulti } from '@/src/services/api';
 import { getPosterUrl } from '@/src/services/api/client';
 import { useSettingsStore } from '@/src/store';
@@ -39,7 +40,10 @@ const Colors = {
 
 export default function SearchScreen() {
   const router = useRouter();
-  const getFormattedDate = useSettingsStore(state => state.getFormattedDate);
+  const { getFormattedDate, language } = useSettingsStore();
+
+  const t = strings[language] || strings.en;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [showUpcomingOnly, setShowUpcomingOnly] = useState(false);
   const debouncedQuery = useDebouncedValue(searchQuery, 500);
@@ -138,13 +142,13 @@ export default function SearchScreen() {
               </Text>
               {upcoming && (
                 <View style={styles.upcomingBadge}>
-                  <Text style={styles.upcomingBadgeText}>UPCOMING</Text>
+              <Text style={styles.upcomingBadgeText}>{t.upcomingBadge}</Text>
                 </View>
               )}
             </View>
             <View style={styles.mediaTypeBadge}>
               <Text style={styles.mediaTypeBadgeText}>
-                {item.media_type === 'tv' ? 'TV' : 'MOVIE'}
+                {item.media_type === 'tv' ? t.tvBadge : t.movieBadge}
               </Text>
             </View>
           </View>
@@ -155,7 +159,7 @@ export default function SearchScreen() {
                 <>
                   <Ionicons name="calendar-outline" size={14} color={Colors.primary} />
                   <Text style={styles.resultDateUpcoming}>
-                    {item.media_type === 'tv' ? 'Air Date: ' : 'Release Date: '}
+                    {item.media_type === 'tv' ? t.airDate : t.releaseDate}
                     {getFormattedDate(date)}
                   </Text>
                 </>
@@ -168,7 +172,7 @@ export default function SearchScreen() {
           )}
           
           <Text style={styles.resultOverview} numberOfLines={2}>
-            {item.overview || 'No description available.'}
+            {item.overview || t.noDesc}
           </Text>
           
           <View style={styles.resultMeta}>
@@ -189,7 +193,7 @@ export default function SearchScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Search</Text>
+        <Text style={styles.headerTitle}>{t.search}</Text>
       </View>
 
       {/* Search Bar */}
@@ -198,7 +202,7 @@ export default function SearchScreen() {
           <Ionicons name="search" size={20} color={Colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search shows and movies..."
+            placeholder={t.searchPlaceholder}
             placeholderTextColor={Colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -224,7 +228,7 @@ export default function SearchScreen() {
               color={showUpcomingOnly ? Colors.text : Colors.textSecondary} 
             />
             <Text style={[styles.filterButtonText, showUpcomingOnly && styles.filterButtonTextActive]}>
-              Upcoming Only
+              {t.upcomingOnly}
             </Text>
           </TouchableOpacity>
         )}
@@ -234,7 +238,7 @@ export default function SearchScreen() {
       {(searching || isFetching) && debouncedQuery.length >= 2 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Searching...</Text>
+          <Text style={styles.loadingText}>{t.searching}</Text>
         </View>
       ) : (
         <FlatList<MultiSearchResult>
@@ -246,7 +250,7 @@ export default function SearchScreen() {
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
             debouncedQuery.length < 2 && trending?.results?.length ? (
-              <Text style={styles.sectionTitle}>🔥 Trending Today</Text>
+              <Text style={styles.sectionTitle}>{t.trendingToday}</Text>
             ) : null
           }
           ListEmptyComponent={

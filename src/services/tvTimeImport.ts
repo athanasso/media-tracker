@@ -7,8 +7,9 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { Alert } from 'react-native';
 
+import { strings } from '@/src/i18n/strings';
 import { apiClient, searchMulti } from '@/src/services/api';
-import { useWatchlistStore } from '@/src/store';
+import { useSettingsStore, useWatchlistStore } from '@/src/store';
 import { TrackedMovie, TrackedShow, TrackingStatus, WatchedEpisode } from '@/src/types';
 
 // ==========================================
@@ -165,6 +166,8 @@ export async function importFromTVTime(
   onProgress?: ProgressCallback
 ): Promise<{ shows: number; movies: number; failed: string[] }> {
   const result = { shows: 0, movies: 0, failed: [] as string[] };
+  const language = useSettingsStore.getState().language;
+  const t = strings[language] || strings.en;
 
   try {
     // Pick the JSON file
@@ -187,12 +190,12 @@ export async function importFromTVTime(
     try {
       tvTimeData = JSON.parse(content);
     } catch (e) {
-      Alert.alert('Invalid JSON', 'Could not parse the file.');
+      Alert.alert(t.invalidJsonTitle, t.invalidJsonMessage);
       return result;
     }
 
     if (!Array.isArray(tvTimeData)) {
-      Alert.alert('Invalid Format', 'The file does not contain a list of shows.');
+      Alert.alert(t.invalidFormatTitle, t.invalidFormatMessage);
       return result;
     }
 
@@ -296,7 +299,7 @@ export async function importFromTVTime(
     return result;
   } catch (error) {
     console.error('TV Time import error:', error);
-    Alert.alert('Import Failed', 'Failed to import TV Time data. Please check the file format.');
+    Alert.alert(t.importFailedTitle, t.importFailedMessage);
     return result;
   }
 }

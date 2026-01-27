@@ -24,6 +24,8 @@ const Colors = {
   success: '#22c55e',
 };
 
+import { strings } from '@/src/i18n/strings';
+
 type SortOption = 'name' | 'date' | 'status' | 'added';
 
 export default function ProfileScreen() {
@@ -49,7 +51,9 @@ export default function ProfileScreen() {
     hasNotification, 
     getNotificationPreference 
   } = useNotificationStore();
-  const getFormattedDate = useSettingsStore((state) => state.getFormattedDate);
+  const { getFormattedDate, language } = useSettingsStore();
+
+  const t = strings[language] || strings.en;
 
   // Request notification permissions on mount
   useEffect(() => {
@@ -57,8 +61,8 @@ export default function ProfileScreen() {
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(
-          'Notification Permission',
-          'Please enable notifications in your device settings to receive reminders for upcoming releases.'
+          t.notificationPermission,
+          t.notificationPermissionMsg
         );
       }
     })();
@@ -67,6 +71,11 @@ export default function ProfileScreen() {
   // Get plan to watch items for upcoming
   const planToWatchShows = useMemo(() => trackedShows.filter(s => s.status === 'plan_to_watch'), [trackedShows]);
   const planToWatchMovies = useMemo(() => trackedMovies.filter(m => m.status === 'plan_to_watch'), [trackedMovies]);
+
+  const totalWatchedEpisodes = useMemo(() => 
+    trackedShows.reduce((acc, show) => acc + show.watchedEpisodes.length, 0),
+    [trackedShows]
+  );
 
   // Fetch details for upcoming shows to get air dates
   // Get shows that might have upcoming episodes (Plan to Watch, Watching, Completed)
@@ -159,22 +168,22 @@ export default function ProfileScreen() {
     if (hasNotif) {
       // Show options to change timing or remove
       Alert.alert(
-        'Notification Settings',
-        `You have a notification set for ${name}. What would you like to do?`,
+        t.notificationSettings,
+        t.notificationSetFor.replace('{name}', name),
         [
           {
-            text: 'Change Timing',
+            text: t.changeTiming,
             onPress: () => showTimingSelector(id, type, name, airDate, currentPref?.timing || '1 day'),
           },
           {
-            text: 'Remove Notification',
+            text: t.removeNotification,
             style: 'destructive' as any,
             onPress: async () => {
               await removeNotification(id, type);
-              Alert.alert('Notification Removed', 'You will no longer receive reminders for this item.');
+              Alert.alert(t.notificationRemoved, t.notificationRemovedMsg);
             },
           },
-          { text: 'Cancel', style: 'cancel' as any },
+          { text: t.cancel, style: 'cancel' as any },
         ]
       );
     } else {
@@ -191,14 +200,14 @@ export default function ProfileScreen() {
     currentTiming?: string
   ) => {
     const timingOptions: { label: string; value: import('@/src/store/useNotificationStore').NotificationTiming }[] = [
-      { label: '1 day before', value: '1 day' },
-      { label: '3 days before', value: '3 days' },
-      { label: '1 week before', value: '1 week' },
+      { label: `1 ${language === 'el' ? 'μέρα' : 'day'} ${t.before}`, value: '1 day' },
+      { label: `3 ${language === 'el' ? 'μέρες' : 'days'} ${t.before}`, value: '3 days' },
+      { label: `1 ${language === 'el' ? 'εβδομάδα' : 'week'} ${t.before}`, value: '1 week' },
     ];
 
     Alert.alert(
-      'Set Notification',
-      `When would you like to be notified about ${name}?`,
+      t.setNotification,
+      t.notifyWhen.replace('{name}', name),
       [
         ...timingOptions.map(option => ({
           text: option.label,
@@ -212,16 +221,16 @@ export default function ProfileScreen() {
                 timing: option.value,
               });
               Alert.alert(
-                'Notification Set',
-                `You'll be notified ${option.label.toLowerCase()} the release date.`
+                t.notificationSet,
+                t.notifyMsg.replace('{timing}', option.label.toLowerCase())
               );
             } catch {
-              Alert.alert('Error', 'Failed to set notification. Please try again.');
+              Alert.alert(t.error, t.failedToSetNotif);
             }
           },
           style: currentTiming === option.value ? 'default' : 'default' as any,
         })),
-        { text: 'Cancel', style: 'cancel' as any },
+        { text: t.cancel, style: 'cancel' as any },
       ]
     );
   };
@@ -415,15 +424,15 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           {item.airDate ? (
             <>
-              <Text style={styles.progressText}>Air Date: {getFormattedDate(item.airDate)}</Text>
+              <Text style={styles.progressText}>{t.airDate}: {getFormattedDate(item.airDate)}</Text>
               {hasNotif && notifPref && (
                 <Text style={styles.notificationText}>
-                  🔔 Notify {notifPref.timing} before
+                  🔔 {t.notify} {notifPref.timing} {t.before}
                 </Text>
               )}
             </>
           ) : (
-            <Text style={styles.progressText}>{getWatchedEpisodesCount(item.showId)} episodes watched</Text>
+            <Text style={styles.progressText}>{getWatchedEpisodesCount(item.showId)} {t.episodesWatched}</Text>
           )}
         </View>
         <View style={styles.itemActions}>
@@ -445,12 +454,69 @@ export default function ProfileScreen() {
           <TouchableOpacity 
             onPress={(e) => {
               e.stopPropagation();
-              Alert.alert('Remove?', '', [{ text: 'Cancel' }, { text: 'Remove', onPress: () => removeShow(item.showId) }]);
+              Alert.alert(t.removeConfirm, '', [{ text: t.cancel }, { text: t.remove, onPress: () => removeShow(item.showId) }]);
             }}
           >
             <Ionicons name="trash-outline" size={20} color="#ef4444" />
           </TouchableOpacity>
         </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderUpcomingShowItem = ({ item }: { item: TrackedShow & { airDate: string; next_episode_to_air?: any } }) => {
+    const nextEpisode = item.next_episode_to_air;
+    const date = nextEpisode?.air_date || item.airDate; // Fallback to main item date if no episode date
+    if (!date) return null; // Should not happen for this tab
+
+    return (
+      <TouchableOpacity style={styles.itemCard} onPress={() => router.push(`/show/${item.showId}`)}>
+        <Image
+          source={{ uri: getPosterUrl(item.posterPath, 'small') || '' }}
+          style={styles.itemPoster}
+          resizeMode="cover"
+        />
+        <View style={styles.itemInfo}>
+          <Text style={styles.itemTitle} numberOfLines={1}>
+            {item.showName}
+          </Text>
+          <View style={styles.statusBadge}>
+            <Text style={[styles.statusText, { color: Colors.primary }]}>
+              {nextEpisode 
+                ? `${t.season.substring(0, 1)}:${nextEpisode.season_number} ${t.episodeN.replace('{number}', nextEpisode.episode_number.toString())}` 
+                : t.upcoming}
+            </Text>
+          </View>
+          <Text style={styles.progressText}>
+             {getFormattedDate(date)}
+          </Text>
+          {hasNotification(item.showId, 'show') && (
+            <Text style={styles.notificationText}>
+              <Ionicons name="notifications" size={10} /> {t.notify}
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity 
+          style={styles.notificationButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleNotificationPress(item.showId, 'show', item.showName, date);
+          }}
+        >
+          <Ionicons 
+            name={hasNotification(item.showId, 'show') ? "notifications" : "notifications-outline"} 
+            size={24} 
+            color={hasNotification(item.showId, 'show') ? Colors.primary : Colors.textSecondary} 
+          />
+        </TouchableOpacity>
+        <TouchableOpacity 
+            onPress={(e) => {
+              e.stopPropagation();
+              Alert.alert(t.removeConfirm, '', [{ text: t.cancel }, { text: t.remove, onPress: () => removeShow(item.showId) }]);
+            }}
+          >
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+          </TouchableOpacity>
       </TouchableOpacity>
     );
   };
@@ -472,10 +538,10 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           {item.releaseDate ? (
             <>
-              <Text style={styles.progressText}>Release Date: {getFormattedDate(item.releaseDate)}</Text>
+              <Text style={styles.progressText}>{t.releaseDate}: {getFormattedDate(item.releaseDate)}</Text>
               {hasNotif && notifPref && (
                 <Text style={styles.notificationText}>
-                  🔔 Notify {notifPref.timing} before
+                  🔔 {t.notify} {notifPref.timing} {t.before}
                 </Text>
               )}
             </>
@@ -500,7 +566,7 @@ export default function ProfileScreen() {
           <TouchableOpacity 
             onPress={(e) => {
               e.stopPropagation();
-              Alert.alert('Remove?', '', [{ text: 'Cancel' }, { text: 'Remove', onPress: () => removeMovie(item.movieId) }]);
+              Alert.alert(t.removeConfirm, '', [{ text: t.cancel }, { text: t.remove, onPress: () => removeMovie(item.movieId) }]);
             }}
           >
             <Ionicons name="trash-outline" size={20} color="#ef4444" />
@@ -540,25 +606,47 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Watchlist</Text>
-        <TouchableOpacity style={styles.settingsButton} onPress={() => router.navigate('/settings' as any)}>
+        <Text style={styles.headerTitle}>{t.profile}</Text>
+        <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/settings')}>
           <Ionicons name="settings-outline" size={24} color={Colors.text} />
         </TouchableOpacity>
       </View>
+
+      {/* Stats Cards */}
       <View style={styles.statsContainer}>
-        <View style={styles.statCard}><Text style={styles.statNumber}>{trackedShows.length}</Text><Text style={styles.statLabel}>Shows</Text></View>
-        <View style={styles.statCard}><Text style={styles.statNumber}>{trackedMovies.length}</Text><Text style={styles.statLabel}>Movies</Text></View>
-        <View style={styles.statCard}><Text style={styles.statNumber}>{planToWatchShows.length + planToWatchMovies.length}</Text><Text style={styles.statLabel}>Plan to Watch</Text></View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{trackedShows.length}</Text>
+          <Text style={styles.statLabel}>{t.shows}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{trackedMovies.length}</Text>
+          <Text style={styles.statLabel}>{t.movies}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{totalWatchedEpisodes}</Text>
+          <Text style={styles.statLabel}>{t.episodes}</Text>
+        </View>
       </View>
+
+      {/* Main Tabs */}
       <View style={styles.tabContainer}>
-        <TouchableOpacity style={[styles.tab, activeTab === 'shows' && styles.activeTab]} onPress={() => setActiveTab('shows')}>
-          <Text style={[styles.tabText, activeTab === 'shows' && styles.activeTabText]}>TV Shows</Text>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'shows' && styles.activeTab]} 
+          onPress={() => setActiveTab('shows')}
+        >
+          <Text style={[styles.tabText, activeTab === 'shows' && styles.activeTabText]}>{t.shows}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, activeTab === 'movies' && styles.activeTab]} onPress={() => setActiveTab('movies')}>
-          <Text style={[styles.tabText, activeTab === 'movies' && styles.activeTabText]}>Movies</Text>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'movies' && styles.activeTab]} 
+          onPress={() => setActiveTab('movies')}
+        >
+          <Text style={[styles.tabText, activeTab === 'movies' && styles.activeTabText]}>{t.movies}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, activeTab === 'plan' && styles.activeTab]} onPress={() => setActiveTab('plan')}>
-          <Text style={[styles.tabText, activeTab === 'plan' && styles.activeTabText]}>Plan to Watch</Text>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'plan' && styles.activeTab]} 
+          onPress={() => setActiveTab('plan')}
+        >
+          <Text style={[styles.tabText, activeTab === 'plan' && styles.activeTabText]}>{t.planToWatch}</Text>
         </TouchableOpacity>
       </View>
 
@@ -568,7 +656,7 @@ export default function ProfileScreen() {
           <Ionicons name="search-outline" size={20} color={Colors.textSecondary} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search..."
+            placeholder={t.search}
             placeholderTextColor={Colors.textSecondary}
             value={activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : planSearch}
             onChangeText={activeTab === 'shows' ? setShowsSearch : activeTab === 'movies' ? setMoviesSearch : setPlanSearch}
@@ -595,38 +683,41 @@ export default function ProfileScreen() {
               style={[styles.subTab, showsSubTab === 'watched' && styles.activeSubTab]} 
               onPress={() => setShowsSubTab('watched')}
             >
-              <Text style={[styles.subTabText, showsSubTab === 'watched' && styles.activeSubTabText]}>Watched</Text>
+              <Text style={[styles.subTabText, showsSubTab === 'watched' && styles.activeSubTabText]}>{t.watched}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.subTab, showsSubTab === 'watchlist' && styles.activeSubTab]} 
               onPress={() => setShowsSubTab('watchlist')}
             >
-              <Text style={[styles.subTabText, showsSubTab === 'watchlist' && styles.activeSubTabText]}>Watchlist</Text>
+              <Text style={[styles.subTabText, showsSubTab === 'watchlist' && styles.activeSubTabText]}>{t.watchlist}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.subTab, showsSubTab === 'upcoming' && styles.activeSubTab]} 
               onPress={() => setShowsSubTab('upcoming')}
             >
-              <Text style={[styles.subTabText, showsSubTab === 'upcoming' && styles.activeSubTabText]}>Upcoming</Text>
+              <Text style={[styles.subTabText, showsSubTab === 'upcoming' && styles.activeSubTabText]}>{t.upcoming}</Text>
             </TouchableOpacity>
           </View>
           {showsSubTab === 'upcoming' && showDetailsQueries.isLoading ? (
             <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading upcoming shows...</Text>
+              <Text style={styles.loadingText}>{t.loadingUpcomingShows}</Text>
             </View>
           ) : (
-            <FlatList
-              data={getFilteredShows(showsSubTab)}
-              keyExtractor={(item) => item.showId.toString()}
-              renderItem={renderShowItem}
-              contentContainerStyle={styles.listContent}
+              <FlatList
+                data={getFilteredShows(showsSubTab)}
+                keyExtractor={(item) => item.showId.toString()}
+                renderItem={(props) => showsSubTab === 'upcoming' 
+                  ? renderUpcomingShowItem(props as any) 
+                  : renderShowItem(props)
+                }
+                contentContainerStyle={styles.listContent}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Ionicons name="tv-outline" size={64} color={Colors.textSecondary} />
                   <Text style={styles.emptyText}>
-                    {showsSubTab === 'watched' ? 'No watched shows yet' :
-                     showsSubTab === 'watchlist' ? 'No shows tracked yet' :
-                     'No upcoming shows in your plan to watch'}
+                    {showsSubTab === 'watched' ? t.noWatchedShows :
+                     showsSubTab === 'watchlist' ? t.noTrackedShows :
+                     t.noUpcomingShows}
                   </Text>
                 </View>
               }
@@ -640,24 +731,24 @@ export default function ProfileScreen() {
               style={[styles.subTab, moviesSubTab === 'watched' && styles.activeSubTab]} 
               onPress={() => setMoviesSubTab('watched')}
             >
-              <Text style={[styles.subTabText, moviesSubTab === 'watched' && styles.activeSubTabText]}>Watched</Text>
+              <Text style={[styles.subTabText, moviesSubTab === 'watched' && styles.activeSubTabText]}>{t.watched}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.subTab, moviesSubTab === 'watchlist' && styles.activeSubTab]} 
               onPress={() => setMoviesSubTab('watchlist')}
             >
-              <Text style={[styles.subTabText, moviesSubTab === 'watchlist' && styles.activeSubTabText]}>Watchlist</Text>
+              <Text style={[styles.subTabText, moviesSubTab === 'watchlist' && styles.activeSubTabText]}>{t.watchlist}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.subTab, moviesSubTab === 'upcoming' && styles.activeSubTab]} 
               onPress={() => setMoviesSubTab('upcoming')}
             >
-              <Text style={[styles.subTabText, moviesSubTab === 'upcoming' && styles.activeSubTabText]}>Upcoming</Text>
+              <Text style={[styles.subTabText, moviesSubTab === 'upcoming' && styles.activeSubTabText]}>{t.upcoming}</Text>
             </TouchableOpacity>
           </View>
           {moviesSubTab === 'upcoming' && movieDetailsQueries.isLoading ? (
             <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading upcoming movies...</Text>
+              <Text style={styles.loadingText}>{t.loadingUpcomingMovies}</Text>
             </View>
           ) : (
             <FlatList
@@ -669,9 +760,9 @@ export default function ProfileScreen() {
                 <View style={styles.emptyContainer}>
                   <Ionicons name="film-outline" size={64} color={Colors.textSecondary} />
                   <Text style={styles.emptyText}>
-                    {moviesSubTab === 'watched' ? 'No watched movies yet' :
-                     moviesSubTab === 'watchlist' ? 'No movies tracked yet' :
-                     'No upcoming movies in your plan to watch'}
+                    {moviesSubTab === 'watched' ? t.noWatchedMovies :
+                     moviesSubTab === 'watchlist' ? t.noTrackedMovies :
+                     t.noUpcomingMovies}
                   </Text>
                 </View>
               }
@@ -685,19 +776,19 @@ export default function ProfileScreen() {
               style={[styles.subTab, planSubTab === 'all' && styles.activeSubTab]} 
               onPress={() => setPlanSubTab('all')}
             >
-              <Text style={[styles.subTabText, planSubTab === 'all' && styles.activeSubTabText]}>All</Text>
+              <Text style={[styles.subTabText, planSubTab === 'all' && styles.activeSubTabText]}>{t.all}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.subTab, planSubTab === 'shows' && styles.activeSubTab]} 
               onPress={() => setPlanSubTab('shows')}
             >
-              <Text style={[styles.subTabText, planSubTab === 'shows' && styles.activeSubTabText]}>Shows</Text>
+              <Text style={[styles.subTabText, planSubTab === 'shows' && styles.activeSubTabText]}>{t.shows}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.subTab, planSubTab === 'movies' && styles.activeSubTab]} 
               onPress={() => setPlanSubTab('movies')}
             >
-              <Text style={[styles.subTabText, planSubTab === 'movies' && styles.activeSubTabText]}>Movies</Text>
+              <Text style={[styles.subTabText, planSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
             </TouchableOpacity>
           </View>
           <FlatList
@@ -709,9 +800,9 @@ export default function ProfileScreen() {
               // Use index to ensure uniqueness even if somehow duplicates exist
               return `${prefix}-${id}-idx${index}`;
             }}
-            renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item }) : renderMovieItem({ item: item })}
+            renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
             contentContainerStyle={styles.listContent}
-            ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="bookmark-outline" size={64} color={Colors.textSecondary} /><Text style={styles.emptyText}>No items in your plan to watch</Text></View>}
+            ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="bookmark-outline" size={64} color={Colors.textSecondary} /><Text style={styles.emptyText}>{t.noPlanItems}</Text></View>}
           />
         </>
       )}
