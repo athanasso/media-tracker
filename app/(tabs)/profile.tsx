@@ -4,7 +4,7 @@
 
 import { getMovieDetails, getShowDetails } from '@/src/services/api';
 import { getPosterUrl } from '@/src/services/api/client';
-import { useNotificationStore, useWatchlistStore } from '@/src/store';
+import { useNotificationStore, useSettingsStore, useWatchlistStore } from '@/src/store';
 import { TrackedMovie, TrackedShow, TrackingStatus } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueries } from '@tanstack/react-query';
@@ -49,6 +49,7 @@ export default function ProfileScreen() {
     hasNotification, 
     getNotificationPreference 
   } = useNotificationStore();
+  const getFormattedDate = useSettingsStore((state) => state.getFormattedDate);
 
   // Request notification permissions on mount
   useEffect(() => {
@@ -414,7 +415,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           {item.airDate ? (
             <>
-              <Text style={styles.progressText}>Air Date: {new Date(item.airDate).toLocaleDateString()}</Text>
+              <Text style={styles.progressText}>Air Date: {getFormattedDate(item.airDate)}</Text>
               {hasNotif && notifPref && (
                 <Text style={styles.notificationText}>
                   🔔 Notify {notifPref.timing} before
@@ -471,7 +472,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           {item.releaseDate ? (
             <>
-              <Text style={styles.progressText}>Release Date: {new Date(item.releaseDate).toLocaleDateString()}</Text>
+              <Text style={styles.progressText}>Release Date: {getFormattedDate(item.releaseDate)}</Text>
               {hasNotif && notifPref && (
                 <Text style={styles.notificationText}>
                   🔔 Notify {notifPref.timing} before

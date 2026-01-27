@@ -9,20 +9,21 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    Keyboard,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Keyboard,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getTrendingAll, searchMulti } from '@/src/services/api';
 import { getPosterUrl } from '@/src/services/api/client';
+import { useSettingsStore } from '@/src/store';
 import { MultiSearchResult } from '@/src/types';
 
 // App colors
@@ -38,6 +39,7 @@ const Colors = {
 
 export default function SearchScreen() {
   const router = useRouter();
+  const getFormattedDate = useSettingsStore(state => state.getFormattedDate);
   const [searchQuery, setSearchQuery] = useState('');
   const [showUpcomingOnly, setShowUpcomingOnly] = useState(false);
   const debouncedQuery = useDebouncedValue(searchQuery, 500);
@@ -154,12 +156,12 @@ export default function SearchScreen() {
                   <Ionicons name="calendar-outline" size={14} color={Colors.primary} />
                   <Text style={styles.resultDateUpcoming}>
                     {item.media_type === 'tv' ? 'Air Date: ' : 'Release Date: '}
-                    {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {getFormattedDate(date)}
                   </Text>
                 </>
               ) : (
                 <Text style={styles.resultYear}>
-                  {date.getFullYear() || 'TBA'}
+                  {date?.getFullYear() || 'TBA'}
                 </Text>
               )}
             </View>

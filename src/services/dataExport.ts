@@ -8,7 +8,7 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Alert } from 'react-native';
 
-import { useWatchlistStore } from '@/src/store';
+import { useSettingsStore, useWatchlistStore } from '@/src/store';
 import { TrackedMovie, TrackedShow } from '@/src/types';
 
 // Export file format
@@ -27,7 +27,7 @@ interface ExportData {
   };
 }
 
-const EXPORT_VERSION = '1.0.1';
+const EXPORT_VERSION = '1.0.2';
 const APP_NAME = 'MediaTracker';
 
 /**
@@ -137,7 +137,7 @@ export async function importWatchlistData(): Promise<boolean> {
           `• ${trackedShows.length} TV Shows\n` +
           `• ${trackedMovies.length} Movies\n` +
           `• ${importedData.stats?.totalWatchedEpisodes || 0} Watched Episodes\n\n` +
-          `Exported on: ${new Date(importedData.exportedAt).toLocaleDateString()}\n\n` +
+          `Exported on: ${useSettingsStore.getState().getFormattedDate(importedData.exportedAt)}\n\n` +
           `Choose import mode:`,
         [
           {

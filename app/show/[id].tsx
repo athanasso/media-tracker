@@ -8,21 +8,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    Pressable,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import { useShowDetails } from '@/src/hooks/useShowDetails';
 import { getBackdropUrl, getPosterUrl, getProfileUrl, getStillUrl } from '@/src/services/api/client';
-import { useWatchlistStore } from '@/src/store';
+import { useSettingsStore, useWatchlistStore } from '@/src/store';
 import { CastMember, Episode, Genre } from '@/src/types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -50,6 +50,7 @@ export default function ShowDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const showId = parseInt(id, 10);
+  const getFormattedDate = useSettingsStore((state) => state.getFormattedDate);
   
   const [selectedSeason, setSelectedSeason] = useState(1);
 
@@ -425,11 +426,7 @@ export default function ShowDetailsScreen() {
                       
                       {episode.air_date && (
                         <Text style={styles.episodeDate}>
-                          {new Date(episode.air_date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
+                          {getFormattedDate(episode.air_date)}
                           {episode.runtime && ` • ${episode.runtime} min`}
                         </Text>
                       )}
