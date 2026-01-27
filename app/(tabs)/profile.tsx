@@ -39,9 +39,9 @@ export default function ProfileScreen() {
   const [showsSearch, setShowsSearch] = useState('');
   const [moviesSearch, setMoviesSearch] = useState('');
   const [planSearch, setPlanSearch] = useState('');
-  const [showsSort, setShowsSort] = useState<SortOption>('name');
-  const [moviesSort, setMoviesSort] = useState<SortOption>('name');
-  const [planSort, setPlanSort] = useState<SortOption>('name');
+  const [showsSort, setShowsSort] = useState<SortOption>('added');
+  const [moviesSort, setMoviesSort] = useState<SortOption>('added');
+  const [planSort, setPlanSort] = useState<SortOption>('added');
   const [showSortMenu, setShowSortMenu] = useState<'shows' | 'movies' | 'plan' | null>(null);
 
   const { trackedShows, trackedMovies, removeShow, removeMovie, getWatchedEpisodesCount, updateShowStatus, updateMovieStatus } = useWatchlistStore();
@@ -137,11 +137,21 @@ export default function ProfileScreen() {
     const statusOptions: TrackingStatus[] = ['watching', 'completed', 'plan_to_watch', 'on_hold', 'dropped'];
 
     Alert.alert(
-      'Change Status',
-      'Select a new status',
+      t.changeStatus,
+      t.selectStatus,
       [
-        ...statusOptions.map(status => ({
-          text: status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        ...statusOptions.map(status => {
+          let label = '';
+          switch (status) {
+            case 'watching': label = t.statusWatching; break;
+            case 'completed': label = t.statusCompleted; break;
+            case 'plan_to_watch': label = t.statusPlanToWatch; break;
+            case 'on_hold': label = t.statusOnHold; break;
+            case 'dropped': label = t.statusDropped; break;
+          }
+          
+          return {
+            text: label,
           onPress: () => {
             if (type === 'show') {
               updateShowStatus(id, status);
@@ -150,8 +160,9 @@ export default function ProfileScreen() {
             }
           },
           style: status === currentStatus ? 'cancel' : 'default' as any,
-        })),
-        { text: 'Cancel', style: 'cancel' as any },
+        };
+        }),
+        { text: t.cancel, style: 'cancel' as any },
       ]
     );
   };
@@ -420,7 +431,13 @@ export default function ProfileScreen() {
             style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}
             onPress={() => handleStatusChange(item.showId, 'show', item.status)}
           >
-            <Text style={styles.statusText}>{item.status.replace(/_/g, ' ')}</Text>
+            <Text style={styles.statusText}>
+              {item.status === 'watching' ? t.statusWatching :
+               item.status === 'completed' ? t.statusCompleted :
+               item.status === 'plan_to_watch' ? t.statusPlanToWatch :
+               item.status === 'on_hold' ? t.statusOnHold :
+               item.status === 'dropped' ? t.statusDropped : item.status}
+            </Text>
           </TouchableOpacity>
           {item.airDate ? (
             <>
@@ -534,7 +551,13 @@ export default function ProfileScreen() {
             style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}
             onPress={() => handleStatusChange(item.movieId, 'movie', item.status)}
           >
-            <Text style={styles.statusText}>{item.status.replace(/_/g, ' ')}</Text>
+            <Text style={styles.statusText}>
+              {item.status === 'watching' ? t.statusWatching :
+               item.status === 'completed' ? t.statusCompleted :
+               item.status === 'plan_to_watch' ? t.statusPlanToWatch :
+               item.status === 'on_hold' ? t.statusOnHold :
+               item.status === 'dropped' ? t.statusDropped : item.status}
+            </Text>
           </TouchableOpacity>
           {item.releaseDate ? (
             <>
@@ -584,21 +607,31 @@ export default function ProfileScreen() {
 
     return (
       <View style={styles.sortMenu}>
-        {(['name', 'date', 'status', 'added'] as SortOption[]).map(option => (
-          <TouchableOpacity
-            key={option}
-            style={[styles.sortOption, currentSort === option && styles.sortOptionActive]}
-            onPress={() => {
-              setSort(option);
-              setShowSortMenu(null);
-            }}
-          >
-            <Text style={[styles.sortOptionText, currentSort === option && styles.sortOptionTextActive]}>
-              {option.charAt(0).toUpperCase() + option.slice(1)}
-            </Text>
-            {currentSort === option && <Ionicons name="checkmark" size={16} color={Colors.primary} />}
-          </TouchableOpacity>
-        ))}
+        {(['name', 'date', 'status', 'added'] as SortOption[]).map(option => {
+          let label = '';
+          switch (option) {
+            case 'name': label = t.sortName; break;
+            case 'date': label = t.sortDate; break;
+            case 'status': label = t.sortStatus; break;
+            case 'added': label = t.sortAdded; break;
+          }
+          
+          return (
+            <TouchableOpacity
+              key={option}
+              style={[styles.sortOption, currentSort === option && styles.sortOptionActive]}
+              onPress={() => {
+                setSort(option);
+                setShowSortMenu(null);
+              }}
+            >
+              <Text style={[styles.sortOptionText, currentSort === option && styles.sortOptionTextActive]}>
+                {label}
+              </Text>
+              {currentSort === option && <Ionicons name="checkmark" size={16} color={Colors.primary} />}
+            </TouchableOpacity>
+          );
+        })}
       </View>
     );
   };

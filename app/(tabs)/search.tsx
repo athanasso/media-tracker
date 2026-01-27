@@ -53,15 +53,16 @@ export default function SearchScreen() {
     data: searchResults,
     isLoading: searching,
     isFetching,
+    refetch: refetchSearch,
   } = useQuery({
-    queryKey: ['search', debouncedQuery],
+    queryKey: ['search', debouncedQuery, language],
     queryFn: () => searchMulti(debouncedQuery),
     enabled: debouncedQuery.length >= 2,
   });
 
   // Trending for empty state
-  const { data: trending } = useQuery({
-    queryKey: ['trending', 'all', 'day'],
+  const { data: trending, refetch: refetchTrending } = useQuery({
+    queryKey: ['trending', 'all', 'day', language],
     queryFn: () => getTrendingAll('day'),
     enabled: debouncedQuery.length < 2,
   });
@@ -258,20 +259,20 @@ export default function SearchScreen() {
               <View style={styles.emptyContainer}>
                 <Ionicons name="search-outline" size={64} color={Colors.textSecondary} />
                 <Text style={styles.emptyText}>
-                  {showUpcomingOnly ? 'No upcoming results found' : 'No results found'}
+                  {showUpcomingOnly ? t.noUpcomingResults : t.noResults}
                 </Text>
                 <Text style={styles.emptySubtext}>
                   {showUpcomingOnly 
-                    ? 'Try turning off the "Upcoming Only" filter or search for a different title'
-                    : 'Try searching for a different title'}
+                    ? t.noUpcomingTip
+                    : t.noResultsTip}
                 </Text>
               </View>
             ) : (
               <View style={styles.emptyContainer}>
                 <Ionicons name="tv-outline" size={64} color={Colors.textSecondary} />
-                <Text style={styles.emptyText}>Find your favorites</Text>
+                <Text style={styles.emptyText}>{t.findFavorites}</Text>
                 <Text style={styles.emptySubtext}>
-                  Search for TV shows and movies to track
+                  {t.searchTip}
                 </Text>
               </View>
             )

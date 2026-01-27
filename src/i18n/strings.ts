@@ -114,6 +114,40 @@ export const strings = {
     releaseDate: 'Release Date: ',
     noDesc: 'No description available.',
     
+    // Sort Options
+    sortName: 'Name',
+    sortDate: 'Date',
+    sortStatus: 'Status',
+    sortAdded: 'Added',
+    
+    // Tracking Status
+    statusWatching: 'Watching',
+    statusCompleted: 'Completed',
+    statusPlanToWatch: 'Plan to Watch',
+    statusOnHold: 'On Hold',
+    statusDropped: 'Dropped',
+    changeStatus: 'Change Status',
+    selectStatus: 'Select a new status',
+    
+    // Search Empty States
+    noResults: 'No results found',
+    noUpcomingResults: 'No upcoming results found',
+    noResultsTip: 'Try searching for a different title',
+    noUpcomingTip: 'Try turning off the "Upcoming Only" filter or search for a different title',
+    findFavorites: 'Find your favorites',
+    searchTip: 'Search for TV shows and movies to track',
+
+    // Discover Screen
+    trendingThisWeek: '🔥 Trending This Week',
+    trendingShows: '📺 Trending TV Shows',
+    trendingMovies: '🎬 Trending Movies',
+    popularShows: '⭐ Popular TV Shows',
+    popularMovies: '🎥 Popular Movies',
+    details: 'Details',
+    tvShow: 'TV SHOW',
+    movieCap: 'MOVIE',
+    loading: 'Loading...',
+
     // Details Screen (Show/Movie)
     loadingShow: 'Loading show details...',
     failedLoadShow: 'Failed to load show',
@@ -249,6 +283,40 @@ export const strings = {
     movieBadge: 'ΤΑΙΝΙΑ',
     releaseDate: 'Κυκλοφορία: ',
     noDesc: 'Δεν υπάρχει περιγραφή.',
+    
+    // Sort Options
+    sortName: 'Όνομα',
+    sortDate: 'Ημερομηνία',
+    sortStatus: 'Κατάσταση',
+    sortAdded: 'Προστέθηκε',
+    
+    // Tracking Status
+    statusWatching: 'Παρακολουθώ',
+    statusCompleted: 'Ολοκληρώθηκε',
+    statusPlanToWatch: 'Προς παρακολούθηση',
+    statusOnHold: 'Σε αναμονή',
+    statusDropped: 'Σταμάτησα',
+    changeStatus: 'Αλλαγή Κατάστασης',
+    selectStatus: 'Επιλέξτε νέα κατάσταση',
+
+    // Search Empty States
+    noResults: 'Δεν βρέθηκαν αποτελέσματα',
+    noUpcomingResults: 'Δεν βρέθηκαν αναμενόμενα',
+    noResultsTip: 'Δοκιμάστε διαφορετικό τίτλο',
+    noUpcomingTip: 'Απενεργοποιήστε το φίλτρο "Μόνο Αναμενόμενα" ή δοκιμάστε άλλον τίτλο',
+    findFavorites: 'Βρείτε τα αγαπημένα σας',
+    searchTip: 'Αναζητήστε σειρές και ταινίες για παρακολούθηση',
+
+    // Discover Screen
+    trendingThisWeek: '🔥 Δημοφιλή Αυτή την Εβδομάδα',
+    trendingShows: '📺 Δημοφιλείς Σειρές',
+    trendingMovies: '🎬 Δημοφιλείς Ταινίες',
+    popularShows: '⭐ Κορυφαίες Σειρές',
+    popularMovies: '🎥 Κορυφαίες Ταινίες',
+    details: 'Λεπτομέρειες',
+    tvShow: 'ΣΕΙΡΑ',
+    movieCap: 'ΤΑΙΝΙΑ',
+    loading: 'Φόρτωση...',
     
     // Details Screen
     loadingShow: 'Φόρτωση λεπτομερειών...',

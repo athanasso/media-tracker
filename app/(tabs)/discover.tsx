@@ -9,26 +9,28 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-    ActivityIndicator,
-    Dimensions,
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { strings } from '@/src/i18n/strings';
 import {
-    getPopularMovies,
-    getPopularShows,
-    getTrendingAll,
-    getTrendingMovies,
-    getTrendingShows,
+  getPopularMovies,
+  getPopularShows,
+  getTrendingAll,
+  getTrendingMovies,
+  getTrendingShows,
 } from '@/src/services/api';
 import { getBackdropUrl, getPosterUrl } from '@/src/services/api/client';
+import { useSettingsStore, useWatchlistStore } from '@/src/store';
 import { MovieListItem, ShowListItem, TrendingItem } from '@/src/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -48,30 +50,35 @@ const Colors = {
 export default function DiscoverScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = React.useState(false);
+  const language = useSettingsStore((state) => state.language);
+  const t = strings[language] || strings.en;
+
+  // Store for adding to watchlist
+  const { addShow, addMovie, isShowTracked, isMovieTracked } = useWatchlistStore();
 
   // Fetch trending content
   const { data: trendingAll, isLoading: loadingTrending, refetch: refetchTrending } = useQuery({
-    queryKey: ['trending', 'all', 'week'],
+    queryKey: ['trending', 'all', 'week', language],
     queryFn: () => getTrendingAll('week'),
   });
 
   const { data: trendingShows, isLoading: loadingShows, refetch: refetchShows } = useQuery({
-    queryKey: ['trending', 'tv', 'week'],
+    queryKey: ['trending', 'tv', 'week', language],
     queryFn: () => getTrendingShows('week'),
   });
 
   const { data: trendingMovies, isLoading: loadingMovies, refetch: refetchMovies } = useQuery({
-    queryKey: ['trending', 'movies', 'week'],
+    queryKey: ['trending', 'movies', 'week', language],
     queryFn: () => getTrendingMovies('week'),
   });
 
   const { data: popularShows, refetch: refetchPopularShows } = useQuery({
-    queryKey: ['popular', 'shows'],
+    queryKey: ['popular', 'shows', language],
     queryFn: () => getPopularShows(),
   });
 
   const { data: popularMovies, refetch: refetchPopularMovies } = useQuery({
-    queryKey: ['popular', 'movies'],
+    queryKey: ['popular', 'movies', language],
     queryFn: () => getPopularMovies(),
   });
 
@@ -95,13 +102,28 @@ export default function DiscoverScreen() {
     }
   };
 
+  const handleAddToWatchlist = (item: TrendingItem) => {
+    if (item.media_type === 'tv') {
+      if (!isShowTracked(item.id)) {
+        addShow({ showId: item.id, showName: item.name || '', posterPath: item.poster_path });
+      }
+    } else {
+      if (!isMovieTracked(item.id)) {
+        addMovie({ movieId: item.id, movieTitle: item.title || '', posterPath: item.poster_path });
+      }
+    }
+  };
+
   const featuredItem = trendingAll?.results?.[0];
+  const isFeaturedTracked = featuredItem 
+    ? (featuredItem.media_type === 'tv' ? isShowTracked(featuredItem.id) : isMovieTracked(featuredItem.id))
+    : false;
 
   if (loadingTrending && loadingShows && loadingMovies) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>{t.loading}</Text>
       </View>
     );
   }
@@ -145,7 +167,7 @@ export default function DiscoverScreen() {
             <View style={styles.featuredContent}>
               <View style={styles.featuredBadge}>
                 <Text style={styles.featuredBadgeText}>
-                  {featuredItem.media_type === 'tv' ? 'TV SHOW' : 'MOVIE'}
+                  {featuredItem.media_type === 'tv' ? t.tvShow : t.movieCap}
                 </Text>
               </View>
               <Text style={styles.featuredTitle}>
@@ -155,12 +177,18 @@ export default function DiscoverScreen() {
                 {featuredItem.overview}
               </Text>
               <View style={styles.featuredActions}>
-                <TouchableOpacity style={styles.playButton}>
-                  <Ionicons name="play" size={20} color="#000" />
-                  <Text style={styles.playButtonText}>Details</Text>
+                <TouchableOpacity 
+                  style={styles.playButton}
+                  onPress={() => navigateToDetails(featuredItem, featuredItem.media_type)}
+                >
+                  <Ionicons name="information-circle" size={20} color="#000" />
+                  <Text style={styles.playButtonText}>{t.details}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.addButton}>
-                  <Ionicons name="add" size={24} color={Colors.text} />
+                <TouchableOpacity 
+                  style={[styles.addButton, isFeaturedTracked && styles.addedButton]}
+                  onPress={() => handleAddToWatchlist(featuredItem)}
+                >
+                  <Ionicons name={isFeaturedTracked ? "checkmark" : "add"} size={24} color={Colors.text} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -169,7 +197,7 @@ export default function DiscoverScreen() {
 
         {/* Trending This Week */}
         <MediaRow
-          title="🔥 Trending This Week"
+          title={t.trendingThisWeek}
           data={trendingAll?.results?.slice(1, 15)}
           onItemPress={(item) => navigateToDetails(item, (item as TrendingItem).media_type)}
           showMediaType
@@ -177,28 +205,28 @@ export default function DiscoverScreen() {
 
         {/* Trending TV Shows */}
         <MediaRow
-          title="📺 Trending TV Shows"
+          title={t.trendingShows}
           data={trendingShows?.results}
           onItemPress={(item) => navigateToDetails(item, 'tv')}
         />
 
         {/* Trending Movies */}
         <MediaRow
-          title="🎬 Trending Movies"
+          title={t.trendingMovies}
           data={trendingMovies?.results}
           onItemPress={(item) => navigateToDetails(item, 'movie')}
         />
 
         {/* Popular TV Shows */}
         <MediaRow
-          title="⭐ Popular TV Shows"
+          title={t.popularShows}
           data={popularShows?.results}
           onItemPress={(item) => navigateToDetails(item, 'tv')}
         />
 
         {/* Popular Movies */}
         <MediaRow
-          title="🎥 Popular Movies"
+          title={t.popularMovies}
           data={popularMovies?.results}
           onItemPress={(item) => navigateToDetails(item, 'movie')}
         />
@@ -366,6 +394,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  addedButton: {
+    backgroundColor: Colors.primary,
   },
   // Section styles
   sectionContainer: {
