@@ -154,33 +154,6 @@ export default function SettingsScreen() {
 
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Language Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t.language} / Γλώσσα</Text>
-            
-            <View style={styles.optionsContainer}>
-              <TouchableOpacity
-                style={[styles.optionItem, language === 'en' && styles.optionItemActive]}
-                onPress={() => setLanguage('en')}
-              >
-                <Text style={[styles.optionText, language === 'en' && styles.optionTextActive]}>
-                  English
-                </Text>
-                {language === 'en' && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.optionItem, language === 'el' && styles.optionItemActive]}
-                onPress={() => setLanguage('el')}
-              >
-                <Text style={[styles.optionText, language === 'el' && styles.optionTextActive]}>
-                  Greek (Ελληνικά)
-                </Text>
-                {language === 'el' && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
-              </TouchableOpacity>
-            </View>
-          </View>
-
           {/* Data Management Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t.dataManagement}</Text>
@@ -280,6 +253,33 @@ export default function SettingsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
             </TouchableOpacity>
+          </View>
+
+          {/* Language Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t.language} / Γλώσσα</Text>
+            
+            <View style={styles.optionsContainer}>
+              <TouchableOpacity
+                style={[styles.optionItem, language === 'en' && styles.optionItemActive]}
+                onPress={() => setLanguage('en')}
+              >
+                <Text style={[styles.optionText, language === 'en' && styles.optionTextActive]}>
+                  English
+                </Text>
+                {language === 'en' && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.optionItem, language === 'el' && styles.optionItemActive]}
+                onPress={() => setLanguage('el')}
+              >
+                <Text style={[styles.optionText, language === 'el' && styles.optionTextActive]}>
+                  Greek (Ελληνικά)
+                </Text>
+                {language === 'el' && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Date Format Section */}

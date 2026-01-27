@@ -143,9 +143,6 @@ export default function DiscoverScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Media Tracker</Text>
-          <TouchableOpacity style={styles.headerIcon}>
-            <Ionicons name="notifications-outline" size={24} color={Colors.text} />
-          </TouchableOpacity>
         </View>
 
         {/* Featured Banner */}
@@ -316,9 +313,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: Colors.text,
-  },
-  headerIcon: {
-    padding: 8,
   },
   // Featured styles
   featuredContainer: {
