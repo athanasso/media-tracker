@@ -16,17 +16,27 @@ import { TrackedMovie, TrackedShow, TrackingStatus, WatchedEpisode } from '@/src
 // TV TIME JSON TYPES
 // ==========================================
 
-interface TVTimeEpisodeIDs {
-  tvdb: number;
-  imdb: string | null;
+interface TVTimeIds {
+  tvdb?: number | null;
+  imdb?: string | null;
 }
 
+// 1. Movies Structure
+interface TVTimeMovie {
+  uuid?: string;
+  title: string;
+  id?: TVTimeIds;
+  watched_at?: string | null;
+  is_watched?: boolean;
+}
+
+// 2. Shows Structure
 interface TVTimeEpisode {
   number: number;
   special: boolean;
-  is_watched: boolean;
-  watched_at: string | null; // "YYYY-MM-DD HH:MM:SS" or null
-  id: TVTimeEpisodeIDs;
+  is_watched?: boolean; // User didn't strictly say this exists but implied by "is_watched" in general or derived from watched_at
+  watched_at?: string | null;
+  id?: TVTimeIds;
 }
 
 interface TVTimeSeason {
@@ -34,19 +44,15 @@ interface TVTimeSeason {
   episodes: TVTimeEpisode[];
 }
 
-interface TVTimeShowIDs {
-  tvdb: number | null;
-  imdb: string | null;
+interface TVTimeShow {
+  title: string;
+  status: string; // e.g. 'up_to_date', 'watch_later', 'continuing', 'dead', 'archived'
+  seasons: TVTimeSeason[];
+  id?: TVTimeIds; // Optional based on description, but usually present
 }
 
-interface TVTimeShow {
-  uuid: string;
-  title: string;
-  status: string; // e.g. 'up_to_date', 'watch_later', 'continuing'
-  id: TVTimeShowIDs;
-  created_at: string;
-  seasons?: TVTimeSeason[]; // User said "Seasons (Array)" so it should be present for shows
-}
+// Union type for the parsed JSON array
+type TVTimeItem = TVTimeMovie | TVTimeShow;
 
 // ==========================================
 // HELPERS
@@ -54,20 +60,12 @@ interface TVTimeShow {
 
 // Map TV Time status to our status
 function mapTVTimeStatus(status: string): TrackingStatus {
-  switch (status) {
-    case 'up_to_date':
-    case 'continuing':
-      return 'watching';
-    case 'watch_later':
-      return 'plan_to_watch';
-    case 'stopped':
-      return 'dropped';
-    case 'finished':
-    case 'completed':
-      return 'completed';
-    default:
-      return 'plan_to_watch';
-  }
+  const s = status?.toLowerCase() || '';
+  if (s.includes('up_to_date') || s.includes('continuing') || s.includes('watching')) return 'watching';
+  if (s.includes('watch_later') || s.includes('plan')) return 'plan_to_watch';
+  if (s.includes('dropped') || s.includes('stopped')) return 'dropped';
+  if (s.includes('finished') || s.includes('dead') || s.includes('ended') || s.includes('archived')) return 'completed';
+  return 'plan_to_watch';
 }
 
 // Find item by external ID (TVDB or IMDB)
@@ -101,32 +99,30 @@ async function findByExternalId(
 }
 
 // Search TMDB for a title and get the ID
-// Returns object with id, media_type ('tv' or 'movie'), and poster_path
 async function findTMDBMatch(
-  item: TVTimeShow
-): Promise<{ id: number; media_type: 'tv' | 'movie'; posterPath: string | null } | null> {
+  item: TVTimeItem,
+  type: 'movie' | 'show'
+): Promise<{ id: number; posterPath: string | null } | null> {
   try {
-    const { id, title } = item;
+    const { title, id } = item;
 
     // 1. Try IMDB ID
-    if (id.imdb && id.imdb !== '-1' && id.imdb !== '') {
+    if (id?.imdb && id.imdb !== '-1' && id.imdb !== '') {
       const match = await findByExternalId(id.imdb, 'imdb_id');
-      if (match) {
+      if (match && ((type === 'movie' && match.media_type === 'movie') || (type === 'show' && match.media_type === 'tv'))) {
         return { 
           id: match.id, 
-          media_type: match.media_type as 'tv' | 'movie', // Trust external ID type
           posterPath: match.poster_path 
         };
       }
     }
 
     // 2. Try TVDB ID
-    if (id.tvdb && id.tvdb > 0) {
+    if (id?.tvdb && id.tvdb > 0) {
       const match = await findByExternalId(id.tvdb, 'tvdb_id');
-      if (match) {
+      if (match && ((type === 'movie' && match.media_type === 'movie') || (type === 'show' && match.media_type === 'tv'))) {
          return { 
            id: match.id, 
-           media_type: match.media_type as 'tv' | 'movie',
            posterPath: match.poster_path 
          };
       }
@@ -136,17 +132,19 @@ async function findTMDBMatch(
     const results = await searchMulti(title);
     
     if (results.results && results.results.length > 0) {
-      // Prefer TV show if available
-      const tvMatch = results.results.find(r => r.media_type === 'tv');
-      if (tvMatch) {
-        return { id: tvMatch.id, media_type: 'tv', posterPath: tvMatch.poster_path || null };
+      if (type === 'show') {
+         const tvMatch = results.results.find(r => r.media_type === 'tv');
+         if (tvMatch) return { id: tvMatch.id, posterPath: tvMatch.poster_path || null };
+      } else {
+         const movieMatch = results.results.find(r => r.media_type === 'movie');
+         if (movieMatch) return { id: movieMatch.id, posterPath: movieMatch.poster_path || null };
       }
       
-      // Otherwise take first match (could be movie)
-      const first = results.results[0];
-      if (first.media_type === 'movie' || first.media_type === 'tv') {
-        return { id: first.id, media_type: first.media_type, posterPath: first.poster_path || null };
-      }
+      // If strict match failed, check generic
+       const first = results.results[0];
+       if ((type === 'show' && first.media_type === 'tv') || (type === 'movie' && first.media_type === 'movie')) {
+         return { id: first.id, posterPath: first.poster_path || null };
+       }
     }
 
     return null;
@@ -185,7 +183,7 @@ export async function importFromTVTime(
     // Read and parse JSON
     const file = new File(pickedFile.uri);
     const content = await file.text();
-    let tvTimeData: TVTimeShow[];
+    let tvTimeData: TVTimeItem[];
 
     try {
       tvTimeData = JSON.parse(content);
@@ -204,6 +202,10 @@ export async function importFromTVTime(
     const newMovies: TrackedMovie[] = [];
     const total = tvTimeData.length;
 
+    // Detect Type based on first item
+    const firstItem = tvTimeData[0];
+    const isShowImport = 'seasons' in firstItem; // Only shows have seasons array
+
     // Process each item
     for (let i = 0; i < tvTimeData.length; i++) {
       const item = tvTimeData[i];
@@ -215,54 +217,57 @@ export async function importFromTVTime(
       if (!item.title) continue;
 
       // Find TMDB Match
-      const tmdbMatch = await findTMDBMatch(item);
+      const tmdbMatch = await findTMDBMatch(item, isShowImport ? 'show' : 'movie');
 
       if (!tmdbMatch) {
         result.failed.push(item.title);
         continue;
       }
 
-      if (tmdbMatch.media_type === 'movie') {
-        // MOVIE PROCESSING
+      if (!isShowImport) {
+        // MOVIE PROCESSING (movies.json)
+        const movieItem = item as TVTimeMovie;
         const existingMovie = store.trackedMovies.find(m => m.movieId === tmdbMatch.id);
         
         if (!existingMovie) {
-          // Determine watched status from item status
-          const isWatched = item.status === 'finished' || item.status === 'completed';
+          // Determine watched status
+          // "watched_at / is_watched": Data regarding viewing history.
+          const isWatched = !!movieItem.is_watched || !!movieItem.watched_at;
           
           const movie: TrackedMovie = {
             movieId: tmdbMatch.id,
-            movieTitle: item.title,
+            movieTitle: movieItem.title,
             posterPath: tmdbMatch.posterPath,
-            addedAt: item.created_at || new Date().toISOString(),
-            watchedAt: isWatched ? new Date().toISOString() : null,
+            addedAt: movieItem.watched_at || new Date().toISOString(),
+            watchedAt: isWatched ? (movieItem.watched_at || new Date().toISOString()) : null,
             status: isWatched ? 'completed' : 'plan_to_watch',
           };
           newMovies.push(movie);
           result.movies++;
         }
       } else {
-        // SHOW PROCESSING
+        // SHOW PROCESSING (shows.json)
+        const showItem = item as TVTimeShow;
         const existingShow = store.trackedShows.find(s => s.showId === tmdbMatch.id);
 
         if (!existingShow) {
           const watchedEpisodes: WatchedEpisode[] = [];
+          const now = new Date().toISOString();
 
-          if (item.seasons) {
-            for (const season of item.seasons) {
+          if (showItem.seasons) {
+            for (const season of showItem.seasons) {
               if (!season.episodes) continue;
               
               for (const episode of season.episodes) {
-                // Skips special episodes (e.g. OVA) unless we want them. 
-                // User said "Special (Boolean): Flag for OVA/Special content" but didn't say to include/exclude.
-                // Standard behavior is usually to track standard episodes.
-                if (episode.is_watched && !episode.special) {
+                // "Episode Level: ... special flag, and watched_at status."
+                // Only normal episodes unless we want specials? Usually skip specials for metrics correctness unless tracked.
+                if (!episode.special && (episode.watched_at || episode.is_watched)) {
                   watchedEpisodes.push({
                     showId: tmdbMatch.id,
                     seasonNumber: season.number,
                     episodeNumber: episode.number,
                     episodeId: episode.id?.tvdb || 0, // Placeholder
-                    watchedAt: episode.watched_at || new Date().toISOString(),
+                    watchedAt: episode.watched_at || now,
                   });
                 }
               }
@@ -271,10 +276,10 @@ export async function importFromTVTime(
 
           const show: TrackedShow = {
             showId: tmdbMatch.id,
-            showName: item.title,
+            showName: showItem.title,
             posterPath: tmdbMatch.posterPath,
-            addedAt: item.created_at || new Date().toISOString(),
-            status: mapTVTimeStatus(item.status),
+            addedAt: now,
+            status: mapTVTimeStatus(showItem.status),
             watchedEpisodes,
           };
           newShows.push(show);
