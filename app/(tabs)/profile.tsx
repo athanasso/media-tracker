@@ -7,7 +7,7 @@ import { getPosterUrl } from '@/src/services/api/client';
 import { useNotificationStore, useWatchlistStore } from '@/src/store';
 import { TrackedMovie, TrackedShow, TrackingStatus } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -85,33 +85,35 @@ export default function ProfileScreen() {
     [showsSubTab, upcomingCandidateShows]
   );
 
-  // Fetch show details for upcoming shows
-  const showDetailsQueries = useQuery({
-    queryKey: ['upcoming-shows', upcomingShowIds],
-    queryFn: async () => {
-      const results = await Promise.allSettled(
-        upcomingShowIds.map(id => getShowDetails(id))
-      );
-      return results
-        .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof getShowDetails>>> => r.status === 'fulfilled')
-        .map(r => r.value);
-    },
-    enabled: upcomingShowIds.length > 0 && showsSubTab === 'upcoming',
+  // Fetch show details for upcoming shows using useQueries for granular updates
+  const showDetailsQueriesResult = useQueries({
+    queries: upcomingShowIds.map(id => ({
+      queryKey: ['show-details', id, 'minimal'],
+      queryFn: () => getShowDetails(id, []),
+      staleTime: 1000 * 60 * 60, // 1 hour
+      enabled: showsSubTab === 'upcoming',
+    }))
   });
 
-  // Fetch movie details for upcoming movies
-  const movieDetailsQueries = useQuery({
-    queryKey: ['upcoming-movies', upcomingMovieIds],
-    queryFn: async () => {
-      const results = await Promise.allSettled(
-        upcomingMovieIds.map(id => getMovieDetails(id))
-      );
-      return results
-        .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof getMovieDetails>>> => r.status === 'fulfilled')
-        .map(r => r.value);
-    },
-    enabled: upcomingMovieIds.length > 0 && moviesSubTab === 'upcoming',
+  const showDetailsQueries = useMemo(() => ({
+    data: showDetailsQueriesResult.map(q => q.data).filter(Boolean) as Awaited<ReturnType<typeof getShowDetails>>[],
+    isLoading: showDetailsQueriesResult.some(q => q.isLoading && q.fetchStatus !== 'idle'),
+  }), [showDetailsQueriesResult]);
+
+  // Fetch movie details for upcoming movies using useQueries
+  const movieDetailsQueriesResult = useQueries({
+    queries: upcomingMovieIds.map(id => ({
+      queryKey: ['movie-details', id, 'minimal'],
+      queryFn: () => getMovieDetails(id, []),
+      staleTime: 1000 * 60 * 60, // 1 hour
+      enabled: moviesSubTab === 'upcoming',
+    }))
   });
+
+  const movieDetailsQueries = useMemo(() => ({
+    data: movieDetailsQueriesResult.map(q => q.data).filter(Boolean) as Awaited<ReturnType<typeof getMovieDetails>>[],
+    isLoading: movieDetailsQueriesResult.some(q => q.isLoading && q.fetchStatus !== 'idle'),
+  }), [movieDetailsQueriesResult]);
 
   const getStatusColor = (status: TrackingStatus) => {
     const colors: Record<TrackingStatus, string> = {
