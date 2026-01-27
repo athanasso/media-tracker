@@ -53,13 +53,25 @@ export default function MovieDetailsScreen() {
     if (isTracked) {
       removeMovie(movieId);
     } else if (movie) {
-      addMovie({ movieId, movieTitle: movie.title, posterPath: movie.poster_path });
+      addMovie({ 
+        movieId, 
+        movieTitle: movie.title, 
+        posterPath: movie.poster_path, 
+        genres: movie.genres,
+        runtime: movie.runtime,
+      });
     }
   };
 
   const handleToggleWatched = () => {
     if (!isTracked && movie) {
-      addMovie({ movieId, movieTitle: movie.title, posterPath: movie.poster_path });
+      addMovie({ 
+        movieId, 
+        movieTitle: movie.title, 
+        posterPath: movie.poster_path, 
+        genres: movie.genres,
+        runtime: movie.runtime,
+      });
     }
     if (watched) {
       markMovieUnwatched(movieId);

@@ -103,6 +103,8 @@ export default function ShowDetailsScreen() {
         showId,
         showName: show.name,
         posterPath: show.poster_path,
+        genres: show.genres,
+        episodeRunTime: show.episode_run_time,
       });
     }
   }, [isTracked, showId, show, addShow, removeShow]);
@@ -115,6 +117,8 @@ export default function ShowDetailsScreen() {
         showId,
         showName: show.name,
         posterPath: show.poster_path,
+        genres: show.genres,
+        episodeRunTime: show.episode_run_time,
       });
     }
 
@@ -140,6 +144,8 @@ export default function ShowDetailsScreen() {
         showId,
         showName: show.name,
         posterPath: show.poster_path,
+        genres: show.genres,
+        episodeRunTime: show.episode_run_time,
       });
     }
 

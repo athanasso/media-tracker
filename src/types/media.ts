@@ -245,6 +245,9 @@ export interface TrackedShow {
   watchedEpisodes: WatchedEpisode[];
   status: TrackingStatus;
   isFavorite?: boolean;
+  // Stats support
+  genres?: Genre[];
+  episodeRunTime?: number[]; // from API
 }
 
 export interface TrackedMovie {
@@ -255,6 +258,9 @@ export interface TrackedMovie {
   watchedAt: string | null;
   status: TrackingStatus;
   isFavorite?: boolean;
+  // Stats support
+  genres?: Genre[];
+  runtime?: number | null;
 }
 
 export type TrackingStatus = 

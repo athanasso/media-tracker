@@ -706,18 +706,27 @@ export default function ProfileScreen() {
 
       {/* Stats Cards */}
       <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
+        <TouchableOpacity 
+          style={styles.statCard}
+          onPress={() => router.push({ pathname: '/stats', params: { type: 'shows' } })}
+        >
           <Text style={styles.statNumber}>{trackedShows.length}</Text>
           <Text style={styles.statLabel}>{t.shows}</Text>
-        </View>
-        <View style={styles.statCard}>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.statCard}
+          onPress={() => router.push({ pathname: '/stats', params: { type: 'movies' } })}
+        >
           <Text style={styles.statNumber}>{trackedMovies.length}</Text>
           <Text style={styles.statLabel}>{t.movies}</Text>
-        </View>
-        <View style={styles.statCard}>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.statCard}
+          onPress={() => router.push({ pathname: '/stats', params: { type: 'episodes' } })}
+        >
           <Text style={styles.statNumber}>{totalWatchedEpisodes}</Text>
           <Text style={styles.statLabel}>{t.episodes}</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Main Tabs */}

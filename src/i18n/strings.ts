@@ -170,6 +170,22 @@ export const strings = {
     episodeN: 'Episode {number}',
     markSeasonWatched: 'Mark Season Watched',
     movieNotFound: 'Movie not found',
+
+    // Stats Screen
+    statistics: 'Statistics',
+    totalShows: 'Total Shows',
+    totalMovies: 'Total Movies',
+    totalEpisodes: 'Total Episodes',
+    showsByStatus: 'Shows by Status',
+    moviesByStatus: 'Movies by Status',
+    topGenres: 'Top Genres',
+    noStatsData: 'No data available for statistics',
+    stats: 'Stats',
+    timeSpent: 'Time Spent',
+    days: 'days',
+    hours: 'hours',
+    minutes: 'minutes',
+    genreDistribution: 'Genre Distribution',
   },
   el: {
     // Settings
@@ -341,5 +357,21 @@ export const strings = {
     episodeN: 'Επεισόδιο {number}',
     markSeasonWatched: 'Ολοκλήρωση Σεζόν',
     movieNotFound: 'Η ταινία δεν βρέθηκε',
+
+    // Stats Screen
+    statistics: 'Στατιστικά',
+    totalShows: 'Σύνολο Σειρών',
+    totalMovies: 'Σύνολο Ταινιών',
+    totalEpisodes: 'Σύνολο Επεισοδίων',
+    showsByStatus: 'Σειρές ανά Κατάσταση',
+    moviesByStatus: 'Ταινίες ανά Κατάσταση',
+    topGenres: 'Κορυφαία Είδη',
+    noStatsData: 'Δεν υπάρχουν δεδομένα για στατιστικά',
+    stats: 'Στατιστικά',
+    timeSpent: 'Χρόνος Παρακολούθησης',
+    days: 'μέρες',
+    hours: 'ώρες',
+    minutes: 'λεπτά',
+    genreDistribution: 'Κατανομή Ειδών',
   }
 };
