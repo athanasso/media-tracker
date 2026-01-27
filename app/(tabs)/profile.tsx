@@ -102,7 +102,8 @@ export default function ProfileScreen() {
     queries: showsToFetchDetails.map(show => ({
       queryKey: ['show-details', show.showId, 'minimal'],
       queryFn: () => getShowDetails(show.showId, []),
-      staleTime: 1000 * 60 * 60, // 1 hour
+      staleTime: 1000 * 60 * 60 * 24, // 24 hours
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours
       enabled: activeTab === 'shows', // Fetch whenever on Shows tab to sort into Watched/In Progress
     }))
   });
@@ -117,7 +118,8 @@ export default function ProfileScreen() {
     queries: upcomingMovieIds.map(id => ({
       queryKey: ['movie-details', id, 'minimal'],
       queryFn: () => getMovieDetails(id, []),
-      staleTime: 1000 * 60 * 60, // 1 hour
+      staleTime: 1000 * 60 * 60 * 24, // 24 hours
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours
       enabled: moviesSubTab === 'upcoming',
     }))
   });

@@ -60,26 +60,36 @@ export default function DiscoverScreen() {
   const { data: trendingAll, isLoading: loadingTrending, refetch: refetchTrending } = useQuery({
     queryKey: ['trending', 'all', 'week', language],
     queryFn: () => getTrendingAll('week'),
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours
+    gcTime: 6 * 60 * 60 * 1000,
   });
 
   const { data: trendingShows, isLoading: loadingShows, refetch: refetchShows } = useQuery({
     queryKey: ['trending', 'tv', 'week', language],
     queryFn: () => getTrendingShows('week'),
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours
+    gcTime: 6 * 60 * 60 * 1000,
   });
 
   const { data: trendingMovies, isLoading: loadingMovies, refetch: refetchMovies } = useQuery({
     queryKey: ['trending', 'movies', 'week', language],
     queryFn: () => getTrendingMovies('week'),
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours
+    gcTime: 6 * 60 * 60 * 1000,
   });
 
   const { data: popularShows, refetch: refetchPopularShows } = useQuery({
     queryKey: ['popular', 'shows', language],
     queryFn: () => getPopularShows(),
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours
+    gcTime: 6 * 60 * 60 * 1000,
   });
 
   const { data: popularMovies, refetch: refetchPopularMovies } = useQuery({
     queryKey: ['popular', 'movies', language],
     queryFn: () => getPopularMovies(),
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours
+    gcTime: 6 * 60 * 60 * 1000,
   });
 
   const onRefresh = React.useCallback(async () => {

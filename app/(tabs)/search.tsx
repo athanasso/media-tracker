@@ -58,6 +58,8 @@ export default function SearchScreen() {
     queryKey: ['search', debouncedQuery, language],
     queryFn: () => searchMulti(debouncedQuery),
     enabled: debouncedQuery.length >= 2,
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours
+    gcTime: 6 * 60 * 60 * 1000,
   });
 
   // Trending for empty state
@@ -65,6 +67,8 @@ export default function SearchScreen() {
     queryKey: ['trending', 'all', 'day', language],
     queryFn: () => getTrendingAll('day'),
     enabled: debouncedQuery.length < 2,
+    staleTime: 6 * 60 * 60 * 1000, // 6 hours
+    gcTime: 6 * 60 * 60 * 1000,
   });
 
   const navigateToDetails = useCallback((item: MultiSearchResult) => {
