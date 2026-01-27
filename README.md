@@ -31,6 +31,12 @@ A dedicated tab showing all items you plan to watch, with sub-tabs:
 - **Shows** - TV shows only
 - **Movies** - Movies only
 
+#### Favorites Tab
+Quick access to all your favorite content, filtered by:
+- **All** - Shows and Movies
+- **Shows** - TV shows only
+- **Movies** - Movies only
+
 #### Search & Sort
 - **Search** - Real-time search across all tabs and sub-tabs
 - **Sort Options** - Sort by Name, Date, Status, or Added date
@@ -78,7 +84,10 @@ A dedicated tab showing all items you plan to watch, with sub-tabs:
   - Dropped
 - **Episode Tracking** - Mark individual episodes or entire seasons as watched
 - **Progress Visualization** - See your progress with visual indicators
-- **Statistics** - View counts for shows, movies, and plan to watch items
+- **Advanced Statistics** - Tap on stats cards to see detailed breakdowns:
+  - **Status Graphs** - Visual stacked bar charts showing your library composition
+  - **Time Spent** - Track your total watch time in days, hours, and minutes
+  - **Episode Counts** - See your total watched episodes and top shows
 
 ## 🛠️ Tech Stack
 
@@ -142,11 +151,11 @@ A dedicated tab showing all items you plan to watch, with sub-tabs:
 ### Profile Screen
 The Profile screen is your central hub for managing your watchlist:
 
-- **Main Tabs**: TV Shows, Movies, Plan to Watch
-- **Sub-Tabs**: Each main tab has Watched, Watchlist, and Upcoming (except Plan to Watch which has All, Shows, Movies)
+- **Main Tabs**: TV Shows, Movies, Plan to Watch, Favorites
+- **Sub-Tabs**: Each main tab has Watched, Watchlist, and Upcoming (except Plan to Watch and Favorites which have specific filters)
 - **Search Bar**: Filter items by name across all tabs
 - **Sort Menu**: Sort by Name, Date, Status, or Added date
-- **Statistics Cards**: Quick view of total shows, movies, and plan to watch items
+- **Statistics Cards**: Tap to view detailed graphs and time spent analysis for Shows, Movies, and Episodes
 
 ### Upcoming Items
 Upcoming items show only content from your "plan to watch" list that has future air/release dates:
@@ -176,11 +185,13 @@ Upcoming items show only content from your "plan to watch" list that has future 
 4. Choose "Merge" or "Replace All"
 
 ### TV Time Import
-Import your existing watchlist from TV Time:
+Import your existing watchlist from TV Time exports:
 1. Go to Profile → Settings
 2. Tap "Import from TV Time"
-3. Select your TV Time export file
-4. Your shows and movies will be imported with their statuses
+3. Select your export file:
+   - **movies.json** for movies
+   - **shows.json** for TV shows (includes full season/episode progress)
+4. Your library will be automatically populated with correct statuses and progress
 
 ## 🔧 Scripts
 
@@ -234,7 +245,8 @@ media-tracker/
 │   │   └── profile.tsx    # Profile/watchlist screen
 │   ├── show/[id].tsx      # Show details
 │   ├── movie/[id].tsx     # Movie details
-│   └── settings.tsx        # Settings screen
+│   ├── settings.tsx        # Settings screen
+│   └── stats.tsx           # Detailed statistics & graphs
 ├── src/
 │   ├── store/             # Zustand stores
 │   │   ├── useWatchlistStore.ts
