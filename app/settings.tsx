@@ -149,64 +149,7 @@ export default function SettingsScreen() {
 
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Date Format Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Date Format</Text>
-            
-            <View style={styles.optionsContainer}>
-              <TouchableOpacity
-                style={[styles.optionItem, dateFormat === 'eu' && styles.optionItemActive]}
-                onPress={() => setDateFormat('eu')}
-              >
-                <Text style={[styles.optionText, dateFormat === 'eu' && styles.optionTextActive]}>
-                  European (DD/MM/YYYY)
-                </Text>
-                {dateFormat === 'eu' && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
-              </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.optionItem, dateFormat === 'us' && styles.optionItemActive]}
-                onPress={() => setDateFormat('us')}
-              >
-                <Text style={[styles.optionText, dateFormat === 'us' && styles.optionTextActive]}>
-                  American (MM/DD/YYYY)
-                </Text>
-                {dateFormat === 'us' && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.optionItem, dateFormat === 'custom' && styles.optionItemActive]}
-                onPress={() => setDateFormat('custom')}
-              >
-                <Text style={[styles.optionText, dateFormat === 'custom' && styles.optionTextActive]}>
-                  Custom
-                </Text>
-                {dateFormat === 'custom' && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
-              </TouchableOpacity>
-
-              {dateFormat === 'custom' && (
-                <View style={styles.customFormatContainer}>
-                  <Text style={styles.customFormatLabel}>Format Pattern:</Text>
-                  <View style={styles.customInputContainer}>
-                    <TextInput
-                      style={styles.customInput}
-                      value={customDateFormat}
-                      onChangeText={setCustomDateFormat}
-                      placeholder="e.g. YYYY-MM-DD"
-                      placeholderTextColor={Colors.textMuted}
-                      autoCapitalize="characters"
-                    />
-                  </View>
-                  <Text style={styles.previewText}>
-                    Preview: {getFormattedDate(new Date())}
-                  </Text>
-                  <Text style={styles.helpText}>
-                    Use DD, MM, YYYY. Example: DD-MM-YYYY
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
 
           {/* Data Management Section */}
           <View style={styles.section}>
@@ -307,6 +250,65 @@ export default function SettingsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
             </TouchableOpacity>
+          </View>
+
+          {/* Date Format Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Date Format</Text>
+            
+            <View style={styles.optionsContainer}>
+              <TouchableOpacity
+                style={[styles.optionItem, dateFormat === 'eu' && styles.optionItemActive]}
+                onPress={() => setDateFormat('eu')}
+              >
+                <Text style={[styles.optionText, dateFormat === 'eu' && styles.optionTextActive]}>
+                  European (DD/MM/YYYY)
+                </Text>
+                {dateFormat === 'eu' && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.optionItem, dateFormat === 'us' && styles.optionItemActive]}
+                onPress={() => setDateFormat('us')}
+              >
+                <Text style={[styles.optionText, dateFormat === 'us' && styles.optionTextActive]}>
+                  American (MM/DD/YYYY)
+                </Text>
+                {dateFormat === 'us' && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.optionItem, dateFormat === 'custom' && styles.optionItemActive]}
+                onPress={() => setDateFormat('custom')}
+              >
+                <Text style={[styles.optionText, dateFormat === 'custom' && styles.optionTextActive]}>
+                  Custom
+                </Text>
+                {dateFormat === 'custom' && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
+              </TouchableOpacity>
+
+              {dateFormat === 'custom' && (
+                <View style={styles.customFormatContainer}>
+                  <Text style={styles.customFormatLabel}>Format Pattern:</Text>
+                  <View style={styles.customInputContainer}>
+                    <TextInput
+                      style={styles.customInput}
+                      value={customDateFormat}
+                      onChangeText={setCustomDateFormat}
+                      placeholder="e.g. YYYY-MM-DD"
+                      placeholderTextColor={Colors.textMuted}
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                  <Text style={styles.previewText}>
+                    Preview: {getFormattedDate(new Date())}
+                  </Text>
+                  <Text style={styles.helpText}>
+                    Use DD, MM, YYYY. Example: DD-MM-YYYY
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
 
           {/* About Section */}
