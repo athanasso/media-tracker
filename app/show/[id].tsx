@@ -4,27 +4,30 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    Linking,
+    Pressable,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { useShowDetails } from '@/src/hooks/useShowDetails';
 import { strings } from '@/src/i18n/strings';
 import { getBackdropUrl, getPosterUrl, getProfileUrl } from '@/src/services/api/client';
+import { getShowWatchProviders } from '@/src/services/api/tmdb';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
-import { CastMember, Episode, Genre } from '@/src/types';
+import { CastMember, Episode, Genre, WatchProvider } from '@/src/types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BACKDROP_HEIGHT = SCREEN_HEIGHT * 0.45;
@@ -57,6 +60,20 @@ export default function ShowDetailsScreen() {
   
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
+
+  // Fetch Watch Providers
+  const { data: watchProviders } = useQuery({
+    queryKey: ['show-watch-providers', showId],
+    queryFn: () => getShowWatchProviders(showId),
+    enabled: !!showId,
+  });
+
+  // Helper to get providers for current language/region (defaulting to US for EN, GR for EL)
+  const currentProviders = useMemo(() => {
+    if (!watchProviders?.results) return null;
+    const region = language === 'el' ? 'GR' : 'US';
+    return watchProviders.results[region] || watchProviders.results['US'];
+  }, [watchProviders, language]);
 
   // Fetch show and season data using custom hook
   const { show, season, isLoadingShow, isLoadingSeason, isError } = useShowDetails({
@@ -253,6 +270,67 @@ export default function ShowDetailsScreen() {
                 </View>
               ))}
             </ScrollView>
+          </View>
+        )}
+
+        {/* ===== WATCH PROVIDERS ===== */}
+        {currentProviders && (currentProviders.flatrate || currentProviders.rent || currentProviders.buy) && (
+          <View style={styles.providerSection}>
+            <Text style={styles.providerSectionTitle}>{t.whereToWatch}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.providersScroll}>
+              {/* Stream */}
+              {currentProviders.flatrate && currentProviders.flatrate.length > 0 && (
+                <View style={styles.providerGroup}>
+                   <Text style={styles.providerLabel}>{t.stream}</Text>
+                   <View style={styles.providerRow}>
+                      {currentProviders.flatrate.map((p: WatchProvider) => (
+                        <TouchableOpacity key={p.provider_id} onPress={() => Linking.openURL(currentProviders.link)}>
+                          <Image 
+                            source={{ uri: getPosterUrl(p.logo_path, 'small') ?? undefined }} 
+                            style={styles.providerLogo} 
+                          />
+                        </TouchableOpacity>
+                      ))}
+                   </View>
+                </View>
+              )}
+              
+               {/* Rent */}
+              {currentProviders.rent && currentProviders.rent.length > 0 && (
+                <View style={styles.providerGroup}>
+                   <Text style={styles.providerLabel}>{t.rent}</Text>
+                   <View style={styles.providerRow}>
+                      {currentProviders.rent.map((p: WatchProvider) => (
+                        <TouchableOpacity key={p.provider_id} onPress={() => Linking.openURL(currentProviders.link)}>
+                          <Image 
+                            source={{ uri: getPosterUrl(p.logo_path, 'small') ?? undefined }} 
+                            style={styles.providerLogo} 
+                          />
+                        </TouchableOpacity>
+                      ))}
+                   </View>
+                </View>
+              )}
+
+               {/* Buy */}
+              {currentProviders.buy && currentProviders.buy.length > 0 && (
+                <View style={styles.providerGroup}>
+                   <Text style={styles.providerLabel}>{t.buy}</Text>
+                   <View style={styles.providerRow}>
+                      {currentProviders.buy.map((p: WatchProvider) => (
+                        <TouchableOpacity key={p.provider_id} onPress={() => Linking.openURL(currentProviders.link)}>
+                          <Image 
+                            source={{ uri: getPosterUrl(p.logo_path, 'small') ?? undefined }} 
+                            style={styles.providerLogo} 
+                          />
+                        </TouchableOpacity>
+                      ))}
+                   </View>
+                </View>
+              )}
+            </ScrollView>
+             {/* Powered by JustWatch attribution (required by TMDB Terms) */}
+             <Text style={styles.attributionText}>Powered by JustWatch</Text>
           </View>
         )}
 
@@ -790,6 +868,68 @@ const styles = StyleSheet.create({
   episodesLoadingText: {
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+
+  // Watch Providers
+  // Watch Providers
+  providerSection: {
+    paddingHorizontal: 16,
+    marginBottom: 8, // Reduced from 24
+    marginTop: 24, // Added more top space
+  },
+  providerSectionTitle: {
+    fontSize: 14, // Smaller date
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  providersScroll: {
+    paddingHorizontal: 16,
+    gap: 20,
+    paddingBottom: 8,
+     // paddingHorizontal removed from here if I put it in container? No, ScrollView needs contentContainerStyle.
+     // Getting rid of paddingHorizontal here might be good if parent has it, but parent is View. 
+     // `contentContainerStyle={styles.providersScroll}`. If I use `paddingHorizontal: 16` on parent View, scroll view might be clipped?
+     // Actually `providerSection` is the container View. `providersScroll` is the contentContainer style of ScrollView.
+     // If `providerSection` has paddingHorizontal, the ScrollView will be indented. That's fine.
+     // But `providersScroll` having paddingHorizontal: 16 adds padding inside the scroll.
+     // Let's keep `providersScroll` as is, but remove paddingHorizontal from `providerSection` if I want full bleed scroll, BUT existing `section` has paddingHorizontal.
+     // The existing implementation uses `paddingHorizontal: 16` in `section`.
+     // If I want scroll to be edge-to-edge, I should remove padding from container.
+     // But the design shows it aligned.
+     // I will keep `providerSection` simple:
+     // paddingHorizontal: 16, marginBottom: 8, marginTop: 24.
+     // And `providersScroll` needs to NOT have paddingHorizontal if the parent does? 
+     // Wait, the previous code had `section` (paddingHorizontal: 16) wrapping `ScrollView` (paddingHorizontal: 16). That double pads!
+     // Actually `styles.section` has `paddingHorizontal`? Let's check line 253+ or wherever `section` is defined.
+     // I will check `section` definition.
+  },
+  providerGroup: {
+    gap: 8,
+  },
+  providerLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  providerRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  providerLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  attributionText: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginTop: 12,
   },
   noEpisodes: {
     alignItems: 'center',

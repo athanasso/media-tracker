@@ -226,6 +226,27 @@ export interface Collection {
 }
 
 // ============================================
+// WATCH PROVIDERS INTERFACES
+// ============================================
+
+export interface WatchProvider {
+  display_priority: number;
+  logo_path: string;
+  provider_id: number;
+  provider_name: string;
+}
+
+export interface WatchProvidersResponse {
+  id: number;
+  results: Record<string, {
+    link: string;
+    flatrate?: WatchProvider[];
+    rent?: WatchProvider[];
+    buy?: WatchProvider[];
+  }>;
+}
+
+// ============================================
 // TRACKING INTERFACES
 // ============================================
 

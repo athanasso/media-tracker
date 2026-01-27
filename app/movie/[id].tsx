@@ -6,14 +6,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import React from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { strings } from '@/src/i18n/strings';
 import { getMovieDetails } from '@/src/services/api';
 import { getBackdropUrl, getPosterUrl, getProfileUrl } from '@/src/services/api/client';
+import { getMovieWatchProviders } from '@/src/services/api/tmdb';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
-import { CastMember } from '@/src/types';
+import { CastMember, WatchProvider } from '@/src/types';
 
 const Colors = {
   primary: '#E50914',
@@ -43,6 +44,19 @@ export default function MovieDetailsScreen() {
     queryFn: () => getMovieDetails(movieId),
     enabled: !!movieId,
   });
+
+  const { data: watchProviders } = useQuery({
+    queryKey: ['movie-watch-providers', movieId],
+    queryFn: () => getMovieWatchProviders(movieId),
+    enabled: !!movieId,
+  });
+
+   // Helper to get providers for current language/region (defaulting to US for EN, GR for EL)
+  const currentProviders = useMemo(() => {
+    if (!watchProviders?.results) return null;
+    const region = language === 'el' ? 'GR' : 'US';
+    return watchProviders.results[region] || watchProviders.results['US'];
+  }, [watchProviders, language]);
 
   // Derive tracked/watched state from the subscribed array
   const trackedMovie = trackedMovies.find((m) => m.movieId === movieId);
@@ -121,6 +135,67 @@ export default function MovieDetailsScreen() {
             )}
           </View>
         </View>
+
+        {/* ===== WATCH PROVIDERS ===== */}
+        {currentProviders && (currentProviders.flatrate || currentProviders.rent || currentProviders.buy) && (
+          <View style={styles.providerSection}>
+            <Text style={styles.providerSectionTitle}>{t.whereToWatch}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.providersScroll}>
+              {/* Stream */}
+              {currentProviders.flatrate && currentProviders.flatrate.length > 0 && (
+                <View style={styles.providerGroup}>
+                   <Text style={styles.providerLabel}>{t.stream}</Text>
+                   <View style={styles.providerRow}>
+                      {currentProviders.flatrate.map((p: WatchProvider) => (
+                        <TouchableOpacity key={p.provider_id} onPress={() => Linking.openURL(currentProviders.link)}>
+                          <Image 
+                            source={{ uri: getPosterUrl(p.logo_path, 'small') ?? undefined }} 
+                            style={styles.providerLogo} 
+                          />
+                        </TouchableOpacity>
+                      ))}
+                   </View>
+                </View>
+              )}
+              
+               {/* Rent */}
+              {currentProviders.rent && currentProviders.rent.length > 0 && (
+                <View style={styles.providerGroup}>
+                   <Text style={styles.providerLabel}>{t.rent}</Text>
+                   <View style={styles.providerRow}>
+                      {currentProviders.rent.map((p: WatchProvider) => (
+                        <TouchableOpacity key={p.provider_id} onPress={() => Linking.openURL(currentProviders.link)}>
+                          <Image 
+                            source={{ uri: getPosterUrl(p.logo_path, 'small') ?? undefined }} 
+                            style={styles.providerLogo} 
+                          />
+                        </TouchableOpacity>
+                      ))}
+                   </View>
+                </View>
+              )}
+
+               {/* Buy */}
+              {currentProviders.buy && currentProviders.buy.length > 0 && (
+                <View style={styles.providerGroup}>
+                   <Text style={styles.providerLabel}>{t.buy}</Text>
+                   <View style={styles.providerRow}>
+                      {currentProviders.buy.map((p: WatchProvider) => (
+                        <TouchableOpacity key={p.provider_id} onPress={() => Linking.openURL(currentProviders.link)}>
+                          <Image 
+                            source={{ uri: getPosterUrl(p.logo_path, 'small') ?? undefined }} 
+                            style={styles.providerLogo} 
+                          />
+                        </TouchableOpacity>
+                      ))}
+                   </View>
+                </View>
+              )}
+            </ScrollView>
+             {/* Powered by JustWatch attribution (required by TMDB Terms) */}
+             <Text style={styles.attributionText}>Powered by JustWatch</Text>
+          </View>
+        )}
 
         {/* Actions */}
         <View style={styles.actions}>
@@ -219,4 +294,23 @@ const styles = StyleSheet.create({
   castImage: { width: 70, height: 70, borderRadius: 35, backgroundColor: Colors.surface },
   castName: { fontSize: 12, color: Colors.text, marginTop: 6, textAlign: 'center' },
   castChar: { fontSize: 10, color: Colors.textSecondary, textAlign: 'center' },
+
+  // Watch Providers
+  providerSection: { // Copied from show details for consistency
+    paddingHorizontal: 16,
+    marginBottom: 8, 
+    marginTop: 24, 
+  },
+  providerSectionTitle: { // Copied from show details
+    fontSize: 14, 
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  providersScroll: { flexDirection: 'row', gap: 20 },
+  providerGroup: { gap: 8, marginRight: 20 },
+  providerLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: '600', marginBottom: 4 },
+  providerRow: { flexDirection: 'row', gap: 8 },
+  providerLogo: { width: 44, height: 44, borderRadius: 8, backgroundColor: Colors.surface, borderWidth: 1, borderColor: '#333' },
+  attributionText: { fontSize: 10, color: Colors.textSecondary, textAlign: 'center', marginTop: 12, opacity: 0.6 },
 });

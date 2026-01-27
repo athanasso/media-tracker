@@ -23,6 +23,7 @@ import {
     TrendingMoviesResponse,
     TrendingShowsResponse,
     UpcomingMoviesResponse,
+    WatchProvidersResponse,
 } from '../../types';
 import { apiClient } from './client';
 
@@ -347,5 +348,25 @@ export const discoverMovies = async (params: {
   const response = await apiClient.get<PopularMoviesResponse>('/discover/movie', {
     params,
   });
+  return response.data;
+};
+
+// ============================================
+// WATCH PROVIDERS
+// ============================================
+
+/**
+ * Get watch providers for a movie
+ */
+export const getMovieWatchProviders = async (movieId: number): Promise<WatchProvidersResponse> => {
+  const response = await apiClient.get<WatchProvidersResponse>(`/movie/${movieId}/watch/providers`);
+  return response.data;
+};
+
+/**
+ * Get watch providers for a TV show
+ */
+export const getShowWatchProviders = async (showId: number): Promise<WatchProvidersResponse> => {
+  const response = await apiClient.get<WatchProvidersResponse>(`/tv/${showId}/watch/providers`);
   return response.data;
 };

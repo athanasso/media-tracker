@@ -16,6 +16,13 @@ export const strings = {
     upcomingCalendar: 'Upcoming Calendar',
     upcomingReleases: 'Upcoming Releases',
     noReleasesDay: 'No releases on this day',
+
+    // Watch Providers
+    whereToWatch: 'Where to Watch',
+    noProviders: 'No streaming information available',
+    buy: 'Buy',
+    rent: 'Rent',
+    stream: 'Stream',
     yourLibrary: 'Your Library',
     shows: 'Shows',
     movies: 'Movies',
@@ -198,6 +205,13 @@ export const strings = {
     hours: 'hours',
     minutes: 'minutes',
     genreDistribution: 'Genre Distribution',
+    
+    // Lists
+    customLists: 'Custom Lists',
+    listNotFound: 'List not found',
+    show: 'Show',
+    movie: 'Movie',
+    noItemsInList: 'No items in this list',
   },
   el: {
     // Settings
@@ -210,6 +224,13 @@ export const strings = {
     tmdbAttribution: 'Δεδομένα από The Movie Database',
     github: 'Αποθετήριο GitHub',
     version: 'Έκδοση',
+
+    // Watch Providers
+    whereToWatch: 'Πού να το δείτε',
+    noProviders: 'Δεν υπάρχουν πληροφορίες streaming',
+    buy: 'Αγορά',
+    rent: 'Ενοικίαση',
+    stream: 'Stream',
     
     // Calendar
     calendar: 'Ημερολόγιο',
@@ -397,5 +418,12 @@ export const strings = {
     hours: 'ώρες',
     minutes: 'λεπτά',
     genreDistribution: 'Κατανομή Ειδών',
+
+    // Lists
+    customLists: 'Προσαρμοσμένες Λίστες',
+    listNotFound: 'Η λίστα δεν βρέθηκε',
+    show: 'Σειρά',
+    movie: 'Ταινία',
+    noItemsInList: 'Δεν υπάρχουν αντικείμενα στη λίστα',
   }
 };
