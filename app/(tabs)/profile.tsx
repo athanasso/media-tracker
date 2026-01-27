@@ -201,7 +201,8 @@ export default function ProfileScreen() {
             },
           },
           { text: t.cancel, style: 'cancel' as any },
-        ]
+        ],
+        { cancelable: true }
       );
     } else {
       // Show timing selector to add notification
@@ -248,7 +249,8 @@ export default function ProfileScreen() {
           style: currentTiming === option.value ? 'default' : 'default' as any,
         })),
         { text: t.cancel, style: 'cancel' as any },
-      ]
+      ],
+      { cancelable: true }
     );
   };
 
