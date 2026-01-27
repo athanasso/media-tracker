@@ -188,6 +188,8 @@ export const strings = {
     seasonN: 'Season {number}',
     episodeN: 'Episode {number}',
     markSeasonWatched: 'Mark Season Watched',
+    markShowWatched: 'Mark All Watched',
+    markShowWatchedConfirm: 'Mark all seasons as watched?',
     movieNotFound: 'Movie not found',
 
     // Stats Screen
@@ -401,6 +403,8 @@ export const strings = {
     seasonN: 'Σεζόν {number}',
     episodeN: 'Επεισόδιο {number}',
     markSeasonWatched: 'Ολοκλήρωση Σεζόν',
+    markShowWatched: 'Ολοκλήρωση Σειράς',
+    markShowWatchedConfirm: 'Ολοκλήρωση όλων των σεζόν;',
     movieNotFound: 'Η ταινία δεν βρέθηκε',
 
     // Stats Screen

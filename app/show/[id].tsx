@@ -10,6 +10,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Dimensions,
     Image,
     Linking,
@@ -89,6 +90,7 @@ export default function ShowDetailsScreen() {
   const markEpisodeWatched = useWatchlistStore((state) => state.markEpisodeWatched);
   const markEpisodeUnwatched = useWatchlistStore((state) => state.markEpisodeUnwatched);
   const markSeasonWatched = useWatchlistStore((state) => state.markSeasonWatched);
+  const markShowWatched = useWatchlistStore((state) => state.markShowWatched);
   const toggleShowFavorite = useWatchlistStore((state) => state.toggleShowFavorite);
 
   // Derive tracking state from the subscribed array
@@ -96,6 +98,16 @@ export default function ShowDetailsScreen() {
   const isTracked = !!trackedShow;
   const watchedEpisodes = useMemo(() => trackedShow?.watchedEpisodes || [], [trackedShow?.watchedEpisodes]);
   const watchedCount = watchedEpisodes.length;
+
+  // Extract data (early return if show needed)
+  const seasons = show?.seasons?.filter((s) => s.season_number > 0) || [];
+  
+  // Calculate total episodes
+  const totalEpisodesCount = useMemo(() => {
+    return seasons.reduce((acc, season) => acc + season.episode_count, 0);
+  }, [seasons]);
+
+  const isFullyWatched = watchedCount > 0 && watchedCount >= totalEpisodesCount;
 
   // Helper function to check if episode is watched
   const checkEpisodeWatched = useCallback((seasonNum: number, episodeNum: number) => {
@@ -125,6 +137,41 @@ export default function ShowDetailsScreen() {
       });
     }
   }, [isTracked, showId, show, addShow, removeShow]);
+
+  // Handle Mark Show Watched
+  const handleMarkShowWatched = useCallback(() => {
+    if (!show || seasons.length === 0) return;
+
+    Alert.alert(
+      t.markShowWatched,
+      t.markShowWatchedConfirm,
+      [
+        { text: t.cancel, style: 'cancel' },
+        {
+          text: t.confirm,
+          onPress: () => {
+             // Auto-add show to tracking if not tracked
+            if (!isTracked) {
+              addShow({
+                showId,
+                showName: show.name,
+                posterPath: show.poster_path,
+                genres: show.genres,
+                episodeRunTime: show.episode_run_time,
+              });
+            }
+            
+            const seasonsToMark = seasons.map(s => ({
+              seasonNumber: s.season_number,
+              episodeCount: s.episode_count
+            }));
+            
+            markShowWatched(showId, seasonsToMark);
+          }
+        }
+      ]
+    );
+  }, [show, seasons, showId, isTracked, addShow, markShowWatched]);
 
   // Toggle episode watched state
   const handleToggleEpisode = useCallback((episode: Episode) => {
@@ -204,7 +251,7 @@ export default function ShowDetailsScreen() {
   const endYear = show.status === 'Ended' ? show.last_air_date?.split('-')[0] : t.present;
   const genres = show.genres || [];
   const cast = show.credits?.cast?.slice(0, 10) || [];
-  const seasons = show.seasons?.filter((s) => s.season_number > 0) || [];
+  // seasons already extracted above
   const episodes = season?.episodes || [];
   const seasonProgress = getSeasonProgressValue(selectedSeason, episodes.length);
 
@@ -345,7 +392,8 @@ export default function ShowDetailsScreen() {
               {isTracked ? t.untrackShow : t.trackShow}
             </Text>
           </TouchableOpacity>
-          
+
+
           {isTracked && (
             <TouchableOpacity
               style={[styles.favoriteButton, trackedShow?.isFavorite && styles.favoriteButtonActive]}
@@ -447,20 +495,39 @@ export default function ShowDetailsScreen() {
                   {t.episodes} ({episodes.length})
                 </Text>
                 
-                {seasonProgress < 100 && (
-                  <TouchableOpacity 
-                    style={styles.markSeasonButton}
-                    onPress={() => markSeasonWatched(showId, selectedSeason, episodes.map(e => ({
-                      showId,
-                      seasonNumber: selectedSeason,
-                      episodeNumber: e.episode_number,
-                      episodeId: e.id,
-                      watchedAt: new Date().toISOString() // Assuming current time, store will handle it
-                    })))}
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false} 
+                  style={{ maxWidth: '65%', flexGrow: 0 }}
+                  contentContainerStyle={styles.episodeActionsContent}
+                >
+                  {seasonProgress < 100 && (
+                    <TouchableOpacity 
+                      style={styles.markSeasonButton}
+                      onPress={() => markSeasonWatched(showId, selectedSeason, episodes.map(e => ({
+                        showId,
+                        seasonNumber: selectedSeason,
+                        episodeNumber: e.episode_number,
+                        episodeId: e.id,
+                        watchedAt: new Date().toISOString() // Assuming current time, store will handle it
+                      })))}
+                    >
+                      <Text style={styles.markSeasonText}>{t.markSeasonWatched}</Text>
+                    </TouchableOpacity>
+                  )}
+
+
+                  
+                  {!isFullyWatched && (
+                   <TouchableOpacity 
+                    style={styles.markShowButton}
+                    onPress={handleMarkShowWatched}
                   >
-                    <Text style={styles.markSeasonText}>{t.markSeasonWatched}</Text>
+                    <Ionicons name="checkmark-done" size={16} color={Colors.text} />
+                    <Text style={styles.markShowText}>{t.markShowWatched}</Text>
                   </TouchableOpacity>
-                )}
+                  )}
+                </ScrollView>
               </View>
 
           {isLoadingSeason ? (
@@ -697,6 +764,9 @@ const styles = StyleSheet.create({
   actionButtonActive: {
     backgroundColor: Colors.success,
   },
+  watchedButton: {
+    backgroundColor: Colors.surface,
+  },
   favoriteButton: {
     width: 48,
     height: 48,
@@ -845,7 +915,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
   },
-  markSeasonButton: {
+  episodeActionsContent: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    paddingRight: 4, // Add a bit of padding for scroll end
+  },
+  markShowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: Colors.surfaceElevated,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -853,10 +932,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  markSeasonText: {
+  markShowText: {
     fontSize: 12,
     fontWeight: '600',
     color: Colors.text,
+  },
+  markSeasonButton: {
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6, // Matched vertical padding
+    borderRadius: 6,
+    justifyContent: 'center',
+  },
+  markSeasonText: {
+    color: Colors.success,
+    fontSize: 12,
+    fontWeight: '600',
   },
   episodesLoading: {
     flexDirection: 'row',
@@ -948,13 +1039,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: 12,
     overflow: 'hidden',
+    borderLeftWidth: 3,
+    borderLeftColor: 'transparent', 
   },
   episodeCardPressed: {
     opacity: 0.8,
   },
   episodeCardWatched: {
     backgroundColor: Colors.surfaceLight,
-    borderLeftWidth: 3,
     borderLeftColor: Colors.success,
   },
   episodeMain: {

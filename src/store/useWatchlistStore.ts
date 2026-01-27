@@ -35,6 +35,7 @@ interface WatchlistState {
   markEpisodeUnwatched: (showId: number, seasonNumber: number, episodeNumber: number) => void;
   markSeasonWatched: (showId: number, seasonNumber: number, episodes: Omit<WatchedEpisode, 'watchedAt'>[]) => void;
   markSeasonUnwatched: (showId: number, seasonNumber: number) => void;
+  markShowWatched: (showId: number, seasons: { seasonNumber: number; episodeCount: number }[]) => void;
   isEpisodeWatched: (showId: number, seasonNumber: number, episodeNumber: number) => boolean;
   getWatchedEpisodesCount: (showId: number) => number;
   getSeasonProgress: (showId: number, seasonNumber: number, totalEpisodes: number) => number;
@@ -154,20 +155,30 @@ export const useWatchlistStore = create<WatchlistState>()(
 
       markEpisodeUnwatched: (showId, seasonNumber, episodeNumber) => {
         set((state) => ({
-          trackedShows: state.trackedShows.map((show) =>
-            show.showId === showId
-              ? {
-                  ...show,
-                  watchedEpisodes: show.watchedEpisodes.filter(
-                    (e) =>
-                      !(
-                        e.seasonNumber === seasonNumber &&
-                        e.episodeNumber === episodeNumber
-                      )
-                  ),
-                }
-              : show
-          ),
+          trackedShows: state.trackedShows.map((show) => {
+            if (show.showId !== showId) return show;
+
+            const newWatchedEpisodes = show.watchedEpisodes.filter(
+              (e) =>
+                !(
+                  e.seasonNumber === seasonNumber &&
+                  e.episodeNumber === episodeNumber
+                )
+            );
+
+            let newStatus = show.status;
+            if (newWatchedEpisodes.length === 0) {
+              newStatus = 'plan_to_watch';
+            } else if (show.status === 'completed') {
+              newStatus = 'watching';
+            }
+
+            return {
+              ...show,
+              watchedEpisodes: newWatchedEpisodes,
+              status: newStatus,
+            };
+          }),
         }));
       },
 
@@ -207,16 +218,56 @@ export const useWatchlistStore = create<WatchlistState>()(
 
       markSeasonUnwatched: (showId, seasonNumber) => {
         set((state) => ({
-          trackedShows: state.trackedShows.map((show) =>
-            show.showId === showId
-              ? {
-                  ...show,
-                  watchedEpisodes: show.watchedEpisodes.filter(
-                    (e) => e.seasonNumber !== seasonNumber
-                  ),
-                }
-              : show
-          ),
+          trackedShows: state.trackedShows.map((show) => {
+            if (show.showId !== showId) return show;
+
+            const newWatchedEpisodes = show.watchedEpisodes.filter(
+              (e) => e.seasonNumber !== seasonNumber
+            );
+
+            let newStatus = show.status;
+            if (newWatchedEpisodes.length === 0) {
+              newStatus = 'plan_to_watch';
+            } else if (show.status === 'completed') {
+              newStatus = 'watching';
+            }
+
+            return {
+              ...show,
+              watchedEpisodes: newWatchedEpisodes,
+              status: newStatus,
+            };
+          }),
+        }));
+      },
+
+      markShowWatched: (showId, seasons) => {
+        set((state) => ({
+          trackedShows: state.trackedShows.map((show) => {
+            if (show.showId !== showId) return show;
+
+            // Generate all episodes
+            const allEpisodes: WatchedEpisode[] = [];
+            const timestamp = new Date().toISOString();
+
+            seasons.forEach((season) => {
+              for (let i = 1; i <= season.episodeCount; i++) {
+                allEpisodes.push({
+                  showId,
+                  seasonNumber: season.seasonNumber,
+                  episodeNumber: i,
+                  episodeId: -1, // Dummy ID as we don't fetch all details
+                  watchedAt: timestamp,
+                });
+              }
+            });
+
+            return {
+              ...show,
+              watchedEpisodes: allEpisodes,
+              status: 'completed',
+            };
+          }),
         }));
       },
 
