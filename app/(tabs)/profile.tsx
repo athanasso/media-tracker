@@ -31,8 +31,8 @@ type SortOption = 'name' | 'date' | 'status' | 'added';
 export default function ProfileScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'shows' | 'movies' | 'plan' | 'favorites'>('shows');
-  const [showsSubTab, setShowsSubTab] = useState<'watched' | 'watchlist' | 'upcoming'>('watchlist');
-  const [moviesSubTab, setMoviesSubTab] = useState<'watched' | 'watchlist' | 'upcoming'>('watchlist');
+  const [showsSubTab, setShowsSubTab] = useState<'watched' | 'in_progress' | 'upcoming'>('in_progress');
+  const [moviesSubTab, setMoviesSubTab] = useState<'watched' | 'upcoming'>('watched');
 
   const [planSubTab, setPlanSubTab] = useState<'shows' | 'movies' | 'all'>('all');
   const [favoritesSubTab, setFavoritesSubTab] = useState<'shows' | 'movies' | 'all'>('all');
@@ -85,31 +85,25 @@ export default function ProfileScreen() {
     [trackedShows]
   );
 
-  // Fetch details for upcoming shows to get air dates
-  // Get shows that might have upcoming episodes (Plan to Watch, Watching, Completed)
-  const upcomingCandidateShows = useMemo(() => 
+  // Fetch details for shows to determine status and air dates
+  // We need details for 'watching' (to check progress), 'plan_to_watch' (for upcoming), and 'completed' (for returning series upcoming)
+  const showsToFetchDetails = useMemo(() => 
     trackedShows.filter(s => ['plan_to_watch', 'watching', 'completed'].includes(s.status)), 
     [trackedShows]
   );
-
+  
   const upcomingMovieIds = useMemo(() => 
     moviesSubTab === 'upcoming' ? planToWatchMovies.map(m => m.movieId) : [],
     [moviesSubTab, planToWatchMovies]
   );
 
-  // Fetch show details for upcoming shows
-  const upcomingShowIds = useMemo(() => 
-    showsSubTab === 'upcoming' ? upcomingCandidateShows.map(s => s.showId) : [],
-    [showsSubTab, upcomingCandidateShows]
-  );
-
-  // Fetch show details for upcoming shows using useQueries for granular updates
+  // Fetch show details
   const showDetailsQueriesResult = useQueries({
-    queries: upcomingShowIds.map(id => ({
-      queryKey: ['show-details', id, 'minimal'],
-      queryFn: () => getShowDetails(id, []),
+    queries: showsToFetchDetails.map(show => ({
+      queryKey: ['show-details', show.showId, 'minimal'],
+      queryFn: () => getShowDetails(show.showId, []),
       staleTime: 1000 * 60 * 60, // 1 hour
-      enabled: showsSubTab === 'upcoming',
+      enabled: activeTab === 'shows', // Fetch whenever on Shows tab to sort into Watched/In Progress
     }))
   });
 
@@ -289,29 +283,56 @@ export default function ProfileScreen() {
   };
 
   // Get filtered and sorted shows
-  const getFilteredShows = (subTab: 'watched' | 'watchlist' | 'upcoming') => {
+  const getFilteredShows = (subTab: 'watched' | 'in_progress' | 'upcoming') => {
     let shows: (TrackedShow & { airDate?: string })[] = [];
+    const showDetailsMap = new Map(
+      (showDetailsQueries.data || []).map(show => [show.id, show])
+    );
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isCaughtUp = (show: TrackedShow) => {
+        const details = showDetailsMap.get(show.showId);
+        // If 'completed', always true.
+        if (show.status === 'completed') return true;
+        // If no details, default to not caught up if watching
+        if (!details) return false;
+        
+        const lastEpisode = details.last_episode_to_air;
+        // If show ended or no last episode, consider caught up
+        if (!lastEpisode) return true;
+
+        // Check if we watched the last aired episode
+        return show.watchedEpisodes.some(
+            e => e.seasonNumber === lastEpisode.season_number && e.episodeNumber === lastEpisode.episode_number
+        );
+    };
 
     if (subTab === 'watched') {
-      shows = trackedShows.filter(s => s.status === 'completed' || s.status === 'watching');
-    } else if (subTab === 'watchlist') {
-      shows = trackedShows;
+      // Watched tab: Completed shows OR Watching shows that are caught up
+      shows = trackedShows.filter(s => {
+          if (s.status === 'completed') return true;
+          if (s.status === 'watching') {
+              return isCaughtUp(s);
+          }
+          return false;
+      });
+    } else if (subTab === 'in_progress') {
+      // In Progress tab: Watching shows that are NOT caught up
+      shows = trackedShows.filter(s => {
+          if (s.status === 'watching') {
+              return !isCaughtUp(s);
+          }
+          return false;
+      });
     } else if (subTab === 'upcoming') {
-      // Filter plan_to_watch shows with future air dates
-      const showDetailsMap = new Map(
-        (showDetailsQueries.data || []).map(show => [show.id, show])
-      );
-      
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      shows = upcomingCandidateShows
+      // Upcoming: Shows with episodes in future
+      shows = showsToFetchDetails
         .map(show => {
           const details = showDetailsMap.get(show.showId);
           if (!details) return null;
           
-          // Check next episode to air or first air date
-          const airDate = details.next_episode_to_air?.air_date || details.first_air_date;
+          const airDate = details.next_episode_to_air?.air_date;
           if (!airDate) return null;
           
           const airDateObj = new Date(airDate);
@@ -329,13 +350,12 @@ export default function ProfileScreen() {
   };
 
   // Get filtered and sorted movies
-  const getFilteredMovies = (subTab: 'watched' | 'watchlist' | 'upcoming') => {
+  const getFilteredMovies = (subTab: 'watched' | 'upcoming') => {
     let movies: (TrackedMovie & { releaseDate?: string })[] = [];
 
     if (subTab === 'watched') {
+      // For movies, we include completed and watching in 'watched' as user requested only 'watched' and 'upcoming'
       movies = trackedMovies.filter(m => m.status === 'completed' || m.status === 'watching');
-    } else if (subTab === 'watchlist') {
-      movies = trackedMovies;
     } else if (subTab === 'upcoming') {
       // Filter plan_to_watch movies with future release dates
       const movieDetailsMap = new Map(
@@ -486,11 +506,15 @@ export default function ProfileScreen() {
         <View style={styles.itemInfo}>
           <Text style={styles.itemTitle} numberOfLines={2}>{item.showName}</Text>
           <TouchableOpacity
-            style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}
+            style={[
+              styles.statusBadge, 
+              { backgroundColor: (activeTab === 'shows' && showsSubTab === 'in_progress') ? '#3b82f6' : getStatusColor(item.status) }
+            ]}
             onPress={() => handleStatusChange(item.showId, 'show', item.status)}
           >
             <Text style={styles.statusText}>
-              {item.status === 'watching' ? t.statusWatching :
+              {activeTab === 'shows' && showsSubTab === 'in_progress' ? t.inProgress :
+               item.status === 'watching' ? t.statusWatching :
                item.status === 'completed' ? t.statusCompleted :
                item.status === 'plan_to_watch' ? t.statusPlanToWatch :
                item.status === 'on_hold' ? t.statusOnHold :
@@ -798,10 +822,10 @@ export default function ProfileScreen() {
               <Text style={[styles.subTabText, showsSubTab === 'watched' && styles.activeSubTabText]}>{t.watched}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.subTab, showsSubTab === 'watchlist' && styles.activeSubTab]} 
-              onPress={() => setShowsSubTab('watchlist')}
+              style={[styles.subTab, showsSubTab === 'in_progress' && styles.activeSubTab]} 
+              onPress={() => setShowsSubTab('in_progress')}
             >
-              <Text style={[styles.subTabText, showsSubTab === 'watchlist' && styles.activeSubTabText]}>{t.watchlist}</Text>
+              <Text style={[styles.subTabText, showsSubTab === 'in_progress' && styles.activeSubTabText]}>{t.inProgress}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.subTab, showsSubTab === 'upcoming' && styles.activeSubTab]} 
@@ -828,7 +852,7 @@ export default function ProfileScreen() {
                   <Ionicons name="tv-outline" size={64} color={Colors.textSecondary} />
                   <Text style={styles.emptyText}>
                     {showsSubTab === 'watched' ? t.noWatchedShows :
-                     showsSubTab === 'watchlist' ? t.noTrackedShows :
+                     showsSubTab === 'in_progress' ? t.noTrackedShows :
                      t.noUpcomingShows}
                   </Text>
                 </View>
@@ -844,12 +868,6 @@ export default function ProfileScreen() {
               onPress={() => setMoviesSubTab('watched')}
             >
               <Text style={[styles.subTabText, moviesSubTab === 'watched' && styles.activeSubTabText]}>{t.watched}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.subTab, moviesSubTab === 'watchlist' && styles.activeSubTab]} 
-              onPress={() => setMoviesSubTab('watchlist')}
-            >
-              <Text style={[styles.subTabText, moviesSubTab === 'watchlist' && styles.activeSubTabText]}>{t.watchlist}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.subTab, moviesSubTab === 'upcoming' && styles.activeSubTab]} 
@@ -873,7 +891,6 @@ export default function ProfileScreen() {
                   <Ionicons name="film-outline" size={64} color={Colors.textSecondary} />
                   <Text style={styles.emptyText}>
                     {moviesSubTab === 'watched' ? t.noWatchedMovies :
-                     moviesSubTab === 'watchlist' ? t.noTrackedMovies :
                      t.noUpcomingMovies}
                   </Text>
                 </View>
