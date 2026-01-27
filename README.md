@@ -194,6 +194,7 @@ Import your existing watchlist from TV Time exports with intelligent matching:
 4. **Intelligent Matching**:
    - Items with exact ID matches are imported automatically.
    - Items matched by Title are flagged as "Pending" for your review.
+   - **Interactive Review**: View rich details for pending matches (Backdrop, Poster, Overview) side-by-side with your original data to verify correctness.
    - You can Accept or Ignore pending matches in the **Review Matches** modal.
    - Items that cannot be matched are listed as "Not Matched" for your reference.
    - **Extract**: You can easily share or extract the list of unmatched items to verify them manually.

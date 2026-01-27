@@ -4,12 +4,14 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { Stack } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Linking,
   Modal,
   ScrollView,
@@ -23,6 +25,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { strings } from '@/src/i18n/strings';
+import { getMovieDetails, getShowDetails } from '@/src/services/api';
+import { getBackdropUrl, getPosterUrl } from '@/src/services/api/client';
 import { exportWatchlistData, getExportPreview, importWatchlistData } from '@/src/services/dataExport';
 import { importFromTVTime, PendingImportItem, processPendingImports } from '@/src/services/tvTimeImport';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
@@ -42,6 +46,71 @@ const Colors = {
   border: '#333333',
 };
 
+
+function MatchDetailView({ id, type }: { id: number, type: 'movie' | 'show' }) {
+  const { data: item, isLoading } = useQuery<any>({
+    queryKey: ['pending_detail', type, id],
+    queryFn: () => type === 'movie' ? getMovieDetails(id) : getShowDetails(id)
+  });
+
+  if (isLoading) {
+    return <ActivityIndicator size="small" color={Colors.primary} style={{ margin: 20 }} />;
+  }
+
+  if (!item) {
+    return <Text style={{ color: Colors.textSecondary }}>Failed to load details.</Text>;
+  }
+
+  const title = (item as any).title || (item as any).name;
+  const releaseDate = (item as any).release_date || (item as any).first_air_date;
+  const runtime = (item as any).runtime ? `${Math.floor((item as any).runtime / 60)}h ${(item as any).runtime % 60}m` : null;
+
+  return (
+    <View style={styles.detailCard}>
+      {/* Backdrop */}
+      {item.backdrop_path && (
+        <Image 
+          source={{ uri: getBackdropUrl(item.backdrop_path) || '' }} 
+          style={styles.detailBackdrop}
+          resizeMode="cover"
+        />
+      )}
+      
+      <View style={styles.detailContent}>
+        <View style={styles.detailHeader}>
+          <Image 
+            source={{ uri: getPosterUrl(item.poster_path, 'medium') || '' }} 
+            style={styles.detailPoster} 
+          />
+          <View style={styles.detailHeaderInfo}>
+            <Text style={styles.detailTitle}>{title}</Text>
+            <Text style={styles.detailMeta}>
+              {releaseDate ? releaseDate.substring(0, 4) : 'N/A'} • {type === 'movie' ? 'Movie' : 'TV Show'}
+            </Text>
+            {runtime && <Text style={styles.detailMeta}>{runtime}</Text>}
+            <View style={styles.detailRatingContainer}>
+               <Ionicons name="star" size={14} color="#FFD700" />
+               <Text style={styles.detailRating}>{item.vote_average?.toFixed(1)}</Text>
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.detailOverviewLabel}>Overview</Text>
+        <Text style={styles.detailOverview}>{item.overview || 'No description available.'}</Text>
+        
+        <Text style={[styles.detailOverviewLabel, { marginTop: 12 }]}>Genres</Text>
+        <View style={styles.detailGenres}>
+            {item.genres?.map((g: any) => (
+                <View key={g.id} style={styles.detailGenreBadge}>
+                    <Text style={styles.detailGenreText}>{g.name}</Text>
+                </View>
+            ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -51,6 +120,7 @@ export default function SettingsScreen() {
   const [missedImports, setMissedImports] = useState<string[]>([]);
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [selectedPending, setSelectedPending] = useState<Set<number>>(new Set());
+  const [detailsItem, setDetailsItem] = useState<PendingImportItem | null>(null);
 
   const { clearWatchlist } = useWatchlistStore();
   const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage } = useSettingsStore();
@@ -420,7 +490,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.menuContent}>
                 <Text style={styles.menuTitle}>{t.version}</Text>
-                <Text style={styles.menuSubtitle}>1.3.0</Text>
+                <Text style={styles.menuSubtitle}>1.3.1</Text>
               </View>
             </View>
           </View>
@@ -514,6 +584,16 @@ export default function SettingsScreen() {
                         </View>
                       </View>
                     </View>
+
+                    <TouchableOpacity 
+                      style={styles.infoButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        setDetailsItem(item);
+                      }}
+                    >
+                      <Ionicons name="information-circle-outline" size={22} color={Colors.primary} />
+                    </TouchableOpacity>
                   </TouchableOpacity>
                 ))}
               </>
@@ -552,6 +632,52 @@ export default function SettingsScreen() {
              </TouchableOpacity>
           </View>
         </SafeAreaView>
+      </Modal>
+
+      {/* Item Details Review Modal */}
+      <Modal
+        visible={!!detailsItem}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setDetailsItem(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { width: '90%', maxHeight: '80%' }]}>
+            <View style={styles.modalHeaderRow}>
+               <Text style={styles.modalTitle}>{t.viewDetails}</Text>
+               <TouchableOpacity onPress={() => setDetailsItem(null)}>
+                  <Ionicons name="close" size={24} color={Colors.textSecondary} />
+               </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ width: '100%', marginTop: 16 }}>
+              {detailsItem && (
+                <>
+                  <Text style={[styles.listSectionTitle, { color: Colors.success }]}>Match (TMDB)</Text>
+                  
+                  <MatchDetailView 
+                    id={detailsItem.match.id} 
+                    type={detailsItem.match.media_type === 'tv' ? 'show' : 'movie'} 
+                  />
+
+                  <View style={[styles.codeBlock, { borderColor: Colors.success, marginTop: 8 }]}>
+                    <Text style={[styles.codeText, { fontSize: 10 }]}>
+                      Match Confidence: {detailsItem.match.title === detailsItem.original.title ? 'High (Exact Title)' : 'Medium (Similar Title)'}
+                      {'\n'}TMDB ID: {detailsItem.match.id}
+                    </Text>
+                  </View>
+
+                  <Text style={[styles.listSectionTitle, { color: Colors.textPrimary, marginTop: 24 }]}>Original (TV Time)</Text>
+                  <View style={styles.codeBlock}>
+                    <Text style={styles.codeText}>
+                      {JSON.stringify(detailsItem.original, null, 2)}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
     </>
   );
@@ -892,5 +1018,109 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.error,
     fontWeight: '600',
+  },
+  infoButton: {
+    padding: 8,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  codeBlock: {
+    backgroundColor: '#000',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginTop: 4,
+  },
+  codeText: {
+    fontFamily: 'monospace',
+    color: Colors.textSecondary,
+    fontSize: 12,
+  },
+  detailCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  detailBackdrop: {
+    width: '100%',
+    height: 120,
+    backgroundColor: Colors.surfaceLight,
+  },
+  detailContent: {
+    padding: 16,
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    marginTop: -40, // Overlap backdrop
+    marginBottom: 16, 
+  },
+  detailPoster: {
+    width: 80,
+    height: 120,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: Colors.surface,
+  },
+  detailHeaderInfo: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'flex-end',
+    paddingBottom: 4,
+  },
+  detailTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  detailMeta: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  detailRatingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  detailRating: {
+    color: Colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  detailOverviewLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  detailOverview: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+  },
+  detailGenres: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  detailGenreBadge: {
+    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  detailGenreText: {
+    fontSize: 10,
+    color: Colors.textSecondary,
   },
 });
