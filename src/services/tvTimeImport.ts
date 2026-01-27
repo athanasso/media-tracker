@@ -7,7 +7,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { Alert } from 'react-native';
 
-import { searchMulti } from '@/src/services/api';
+import { apiClient, searchMulti } from '@/src/services/api';
 import { useWatchlistStore } from '@/src/store';
 import { TrackedMovie, TrackedShow, TrackingStatus, WatchedEpisode } from '@/src/types';
 
@@ -63,12 +63,68 @@ function isMovie(item: TVTimeItem): boolean {
   return !item.seasons || item.seasons.length === 0;
 }
 
+// Find item by external ID (TVDB or IMDB)
+async function findByExternalId(
+  id: string | number,
+  source: 'tvdb_id' | 'imdb_id'
+): Promise<{ id: number; media_type: string; poster_path: string | null } | null> {
+  try {
+    const response = await apiClient.get<any>(`/find/${id}`, {
+      params: { external_source: source },
+    });
+    
+    // Check results
+    const data = response.data;
+    if (data.movie_results?.length > 0) {
+      return { ...data.movie_results[0], media_type: 'movie' };
+    }
+    if (data.tv_results?.length > 0) {
+      return { ...data.tv_results[0], media_type: 'tv' };
+    }
+    if (data.tv_episode_results?.length > 0) {
+       // If we found an episode, we might need the show ID. 
+       // Usually /find with tvdb_id for a show returns tv_results.
+       // If it's a specific episode ID, we might get episode_results.
+       // But TV Time export `id.tvdb` is usually the SHOW id.
+       return { ...data.tv_episode_results[0], media_type: 'tv' };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Failed to find by external ID: ${id} (${source})`, error);
+    return null;
+  }
+}
+
 // Search TMDB for a title and get the ID
 async function findTMDBId(
   title: string,
-  isMovie: boolean
+  isMovie: boolean,
+  ids?: { tvdb?: number; imdb?: string }
 ): Promise<{ id: number; posterPath: string | null } | null> {
   try {
+    // 1. Try IMDB ID
+    if (ids?.imdb && ids.imdb !== '-1' && ids.imdb !== '') {
+      const match = await findByExternalId(ids.imdb, 'imdb_id');
+      if (match) {
+        // Ensure type match if we know it (optional, but good for safety)
+        if (isMovie && match.media_type === 'movie') return { id: match.id, posterPath: match.poster_path };
+        if (!isMovie && match.media_type === 'tv') return { id: match.id, posterPath: match.poster_path };
+        // If type mismatch, trust the external ID result? 
+        // TV Time sometimes confuses types, but external ID is usually definitive.
+        return { id: match.id, posterPath: match.poster_path };
+      }
+    }
+
+    // 2. Try TVDB ID
+    if (ids?.tvdb && ids.tvdb > 0) {
+      const match = await findByExternalId(ids.tvdb, 'tvdb_id');
+      if (match) {
+         return { id: match.id, posterPath: match.poster_path };
+      }
+    }
+
+    // 3. Fallback to Title Search
     const results = await searchMulti(title);
     
     // Filter by media type and find best match
@@ -143,7 +199,7 @@ export async function importFromTVTime(
       onProgress?.(i + 1, total, item.title);
 
       // Search TMDB for this title
-      const tmdbResult = await findTMDBId(item.title, isMovie(item));
+      const tmdbResult = await findTMDBId(item.title, isMovie(item), item.id);
 
       if (!tmdbResult) {
         result.failed.push(item.title);
