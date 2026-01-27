@@ -581,8 +581,8 @@ export default function ProfileScreen() {
           <Text style={styles.itemTitle} numberOfLines={1}>
             {item.showName}
           </Text>
-          <View style={styles.statusBadge}>
-            <Text style={[styles.statusText, { color: Colors.primary }]}>
+          <View style={[styles.statusBadge, { backgroundColor: '#f59e0b' }]}>
+            <Text style={styles.statusText}>
               {nextEpisode 
                 ? `${t.season.substring(0, 1)}:${nextEpisode.season_number} ${t.episodeN.replace('{number}', nextEpisode.episode_number.toString())}` 
                 : t.upcoming}
@@ -636,7 +636,8 @@ export default function ProfileScreen() {
             onPress={() => handleStatusChange(item.movieId, 'movie', item.status)}
           >
             <Text style={styles.statusText}>
-              {item.status === 'watching' ? t.statusWatching :
+              {(activeTab === 'movies' && moviesSubTab === 'upcoming') ? t.upcoming :
+               item.status === 'watching' ? t.statusWatching :
                item.status === 'completed' ? t.statusCompleted :
                item.status === 'plan_to_watch' ? t.statusPlanToWatch :
                item.status === 'on_hold' ? t.statusOnHold :
