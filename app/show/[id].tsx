@@ -72,6 +72,7 @@ export default function ShowDetailsScreen() {
   const markEpisodeWatched = useWatchlistStore((state) => state.markEpisodeWatched);
   const markEpisodeUnwatched = useWatchlistStore((state) => state.markEpisodeUnwatched);
   const markSeasonWatched = useWatchlistStore((state) => state.markSeasonWatched);
+  const toggleShowFavorite = useWatchlistStore((state) => state.toggleShowFavorite);
 
   // Derive tracking state from the subscribed array
   const trackedShow = trackedShows.find((s) => s.showId === showId);
@@ -260,6 +261,19 @@ export default function ShowDetailsScreen() {
               {isTracked ? t.untrackShow : t.trackShow}
             </Text>
           </TouchableOpacity>
+          
+          {isTracked && (
+            <TouchableOpacity
+              style={[styles.favoriteButton, trackedShow?.isFavorite && styles.favoriteButtonActive]}
+              onPress={() => toggleShowFavorite(showId)}
+            >
+              <Ionicons 
+                name={trackedShow?.isFavorite ? "heart" : "heart-outline"} 
+                size={24} 
+                color={trackedShow?.isFavorite ? Colors.text : Colors.text} 
+              />
+            </TouchableOpacity>
+          )}
           
           {isTracked && watchedCount > 0 && (
             <View style={styles.progressBadge}>
@@ -598,6 +612,20 @@ const styles = StyleSheet.create({
   },
   actionButtonActive: {
     backgroundColor: Colors.success,
+  },
+  favoriteButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  favoriteButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   actionButtonText: {
     fontSize: 15,

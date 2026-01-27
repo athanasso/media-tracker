@@ -30,19 +30,23 @@ type SortOption = 'name' | 'date' | 'status' | 'added';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'shows' | 'movies' | 'plan'>('shows');
+  const [activeTab, setActiveTab] = useState<'shows' | 'movies' | 'plan' | 'favorites'>('shows');
   const [showsSubTab, setShowsSubTab] = useState<'watched' | 'watchlist' | 'upcoming'>('watchlist');
   const [moviesSubTab, setMoviesSubTab] = useState<'watched' | 'watchlist' | 'upcoming'>('watchlist');
+
   const [planSubTab, setPlanSubTab] = useState<'shows' | 'movies' | 'all'>('all');
+  const [favoritesSubTab, setFavoritesSubTab] = useState<'shows' | 'movies' | 'all'>('all');
   
   // Search and sort states
   const [showsSearch, setShowsSearch] = useState('');
   const [moviesSearch, setMoviesSearch] = useState('');
   const [planSearch, setPlanSearch] = useState('');
+  const [favoritesSearch, setFavoritesSearch] = useState('');
   const [showsSort, setShowsSort] = useState<SortOption>('added');
   const [moviesSort, setMoviesSort] = useState<SortOption>('added');
   const [planSort, setPlanSort] = useState<SortOption>('added');
-  const [showSortMenu, setShowSortMenu] = useState<'shows' | 'movies' | 'plan' | null>(null);
+  const [favoritesSort, setFavoritesSort] = useState<SortOption>('added');
+  const [showSortMenu, setShowSortMenu] = useState<'shows' | 'movies' | 'plan' | 'favorites' | null>(null);
 
   const { trackedShows, trackedMovies, removeShow, removeMovie, getWatchedEpisodesCount, updateShowStatus, updateMovieStatus } = useWatchlistStore();
   const { 
@@ -68,9 +72,13 @@ export default function ProfileScreen() {
     })();
   }, []);
 
-  // Get plan to watch items for upcoming
+  // Get plan to watch items
   const planToWatchShows = useMemo(() => trackedShows.filter(s => s.status === 'plan_to_watch'), [trackedShows]);
   const planToWatchMovies = useMemo(() => trackedMovies.filter(m => m.status === 'plan_to_watch'), [trackedMovies]);
+
+  // Get favorite items
+  const favoriteShows = useMemo(() => trackedShows.filter(s => s.isFavorite), [trackedShows]);
+  const favoriteMovies = useMemo(() => trackedMovies.filter(m => m.isFavorite), [trackedMovies]);
 
   const totalWatchedEpisodes = useMemo(() => 
     trackedShows.reduce((acc, show) => acc + show.watchedEpisodes.length, 0),
@@ -418,6 +426,56 @@ export default function ProfileScreen() {
     return sorted;
   };
 
+
+
+  // Get filtered and sorted favorite items
+  const getFilteredFavorites = () => {
+    type FavoriteItem = (TrackedShow & { type: 'show' }) | (TrackedMovie & { type: 'movie' });
+    let items: FavoriteItem[] = [];
+
+    if (favoritesSubTab === 'shows') {
+      items = favoriteShows.map(s => ({ ...s, type: 'show' as const }));
+    } else if (favoritesSubTab === 'movies') {
+      items = favoriteMovies.map(m => ({ ...m, type: 'movie' as const }));
+    } else {
+      items = [
+        ...favoriteShows.map(s => ({ ...s, type: 'show' as const })),
+        ...favoriteMovies.map(m => ({ ...m, type: 'movie' as const }))
+      ];
+    }
+
+    // Filter by search
+    if (favoritesSearch.trim()) {
+      const searchLower = favoritesSearch.toLowerCase();
+      items = items.filter(item => {
+        if (item.type === 'show') {
+          return item.showName.toLowerCase().includes(searchLower);
+        } else {
+          return item.movieTitle.toLowerCase().includes(searchLower);
+        }
+      });
+    }
+
+    // Sort
+    const sorted = [...items].sort((a, b) => {
+      const getTitle = (item: typeof items[0]) => item.type === 'show' ? item.showName : item.movieTitle;
+      switch (favoritesSort) {
+        case 'name':
+          return getTitle(a).localeCompare(getTitle(b));
+        case 'date':
+          return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+        case 'status':
+          return a.status.localeCompare(b.status);
+        case 'added':
+          return new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime();
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  };
+
   const renderShowItem = ({ item }: { item: TrackedShow & { airDate?: string } }) => {
     const hasNotif = item.airDate ? hasNotification(item.showId, 'show') : false;
     const notifPref = item.airDate ? getNotificationPreference(item.showId, 'show') : undefined;
@@ -599,11 +657,12 @@ export default function ProfileScreen() {
     );
   };
 
-  const renderSortMenu = (type: 'shows' | 'movies' | 'plan') => {
+
+  const renderSortMenu = (type: 'shows' | 'movies' | 'plan' | 'favorites') => {
     if (showSortMenu !== type) return null;
 
-    const currentSort = type === 'shows' ? showsSort : type === 'movies' ? moviesSort : planSort;
-    const setSort = type === 'shows' ? setShowsSort : type === 'movies' ? setMoviesSort : setPlanSort;
+    const currentSort = type === 'shows' ? showsSort : type === 'movies' ? moviesSort : type === 'plan' ? planSort : favoritesSort;
+    const setSort = type === 'shows' ? setShowsSort : type === 'movies' ? setMoviesSort : type === 'plan' ? setPlanSort : setFavoritesSort;
 
     return (
       <View style={styles.sortMenu}>
@@ -662,25 +721,36 @@ export default function ProfileScreen() {
       </View>
 
       {/* Main Tabs */}
+      {/* Main Tabs - 2x2 Grid */}
       <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'shows' && styles.activeTab]} 
-          onPress={() => setActiveTab('shows')}
-        >
-          <Text style={[styles.tabText, activeTab === 'shows' && styles.activeTabText]}>{t.shows}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'movies' && styles.activeTab]} 
-          onPress={() => setActiveTab('movies')}
-        >
-          <Text style={[styles.tabText, activeTab === 'movies' && styles.activeTabText]}>{t.movies}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'plan' && styles.activeTab]} 
-          onPress={() => setActiveTab('plan')}
-        >
-          <Text style={[styles.tabText, activeTab === 'plan' && styles.activeTabText]}>{t.planToWatch}</Text>
-        </TouchableOpacity>
+        <View style={styles.tabRow}>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'shows' && styles.activeTab]} 
+            onPress={() => setActiveTab('shows')}
+          >
+            <Text style={[styles.tabText, activeTab === 'shows' && styles.activeTabText]}>{t.shows}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'movies' && styles.activeTab]} 
+            onPress={() => setActiveTab('movies')}
+          >
+            <Text style={[styles.tabText, activeTab === 'movies' && styles.activeTabText]}>{t.movies}</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.tabRow}>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'plan' && styles.activeTab]} 
+            onPress={() => setActiveTab('plan')}
+          >
+            <Text style={[styles.tabText, activeTab === 'plan' && styles.activeTabText]}>{t.planToWatch}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'favorites' && styles.activeTab]} 
+            onPress={() => setActiveTab('favorites')}
+          >
+            <Text style={[styles.tabText, activeTab === 'favorites' && styles.activeTabText]}>{t.favorites}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search and Sort Bar */}
@@ -691,11 +761,11 @@ export default function ProfileScreen() {
             style={styles.searchInput}
             placeholder={t.search}
             placeholderTextColor={Colors.textSecondary}
-            value={activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : planSearch}
-            onChangeText={activeTab === 'shows' ? setShowsSearch : activeTab === 'movies' ? setMoviesSearch : setPlanSearch}
+            value={activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : activeTab === 'plan' ? planSearch : favoritesSearch}
+            onChangeText={activeTab === 'shows' ? setShowsSearch : activeTab === 'movies' ? setMoviesSearch : activeTab === 'plan' ? setPlanSearch : setFavoritesSearch}
           />
-          {(activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : planSearch) ? (
-            <TouchableOpacity onPress={() => activeTab === 'shows' ? setShowsSearch('') : activeTab === 'movies' ? setMoviesSearch('') : setPlanSearch('')}>
+          {(activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : activeTab === 'plan' ? planSearch : favoritesSearch) ? (
+            <TouchableOpacity onPress={() => activeTab === 'shows' ? setShowsSearch('') : activeTab === 'movies' ? setMoviesSearch('') : activeTab === 'plan' ? setPlanSearch('') : setFavoritesSearch('')}>
               <Ionicons name="close-circle" size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
           ) : null}
@@ -802,6 +872,46 @@ export default function ProfileScreen() {
             />
           )}
         </>
+      ) : activeTab === 'favorites' ? (
+        <>
+          <View style={styles.subTabContainer}>
+            <TouchableOpacity 
+              style={[styles.subTab, favoritesSubTab === 'all' && styles.activeSubTab]} 
+              onPress={() => setFavoritesSubTab('all')}
+            >
+              <Text style={[styles.subTabText, favoritesSubTab === 'all' && styles.activeSubTabText]}>{t.all}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.subTab, favoritesSubTab === 'shows' && styles.activeSubTab]} 
+              onPress={() => setFavoritesSubTab('shows')}
+            >
+              <Text style={[styles.subTabText, favoritesSubTab === 'shows' && styles.activeSubTabText]}>{t.shows}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.subTab, favoritesSubTab === 'movies' && styles.activeSubTab]} 
+              onPress={() => setFavoritesSubTab('movies')}
+            >
+              <Text style={[styles.subTabText, favoritesSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={getFilteredFavorites()}
+            keyExtractor={(item, index) => {
+              // Ensure unique keys
+              const prefix = item.type === 'show' ? 'show' : 'movie';
+              const id = item.type === 'show' ? item.showId : item.movieId;
+              return `${prefix}-fav-${id}-idx${index}`;
+            }}
+            renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="heart-outline" size={64} color={Colors.textSecondary} />
+                <Text style={styles.emptyText}>{t.findFavorites}</Text>
+              </View>
+            }
+          />
+        </>
       ) : (
         <>
           <View style={styles.subTabContainer}>
@@ -852,7 +962,8 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, backgroundColor: Colors.surface, borderRadius: 12, padding: 16, alignItems: 'center' },
   statNumber: { fontSize: 24, fontWeight: 'bold', color: Colors.text },
   statLabel: { fontSize: 12, color: Colors.textSecondary },
-  tabContainer: { flexDirection: 'row', paddingHorizontal: 16, gap: 12, marginBottom: 16 },
+  tabContainer: { paddingHorizontal: 16, gap: 12, marginBottom: 16 },
+  tabRow: { flexDirection: 'row', gap: 12 },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: Colors.surface, borderRadius: 10 },
   activeTab: { borderWidth: 1, borderColor: Colors.primary },
   tabText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },

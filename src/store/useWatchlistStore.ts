@@ -7,10 +7,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import {
-  TrackedMovie,
-  TrackedShow,
-  TrackingStatus,
-  WatchedEpisode,
+    TrackedMovie,
+    TrackedShow,
+    TrackingStatus,
+    WatchedEpisode,
 } from '../types';
 
 // ============================================
@@ -28,6 +28,7 @@ interface WatchlistState {
   updateShowStatus: (showId: number, status: TrackingStatus) => void;
   isShowTracked: (showId: number) => boolean;
   getTrackedShow: (showId: number) => TrackedShow | undefined;
+  toggleShowFavorite: (showId: number) => void;
 
   // Episode Actions
   markEpisodeWatched: (episode: Omit<WatchedEpisode, 'watchedAt'>) => void;
@@ -47,6 +48,7 @@ interface WatchlistState {
   isMovieTracked: (movieId: number) => boolean;
   isMovieWatched: (movieId: number) => boolean;
   getTrackedMovie: (movieId: number) => TrackedMovie | undefined;
+  toggleMovieFavorite: (movieId: number) => void;
 
   // Utility Actions
   clearWatchlist: () => void;
@@ -103,6 +105,14 @@ export const useWatchlistStore = create<WatchlistState>()(
 
       getTrackedShow: (showId) => {
         return get().trackedShows.find((s) => s.showId === showId);
+      },
+
+      toggleShowFavorite: (showId) => {
+        set((state) => ({
+          trackedShows: state.trackedShows.map((show) =>
+            show.showId === showId ? { ...show, isFavorite: !show.isFavorite } : show
+          ),
+        }));
       },
 
       // ==========================================
@@ -309,6 +319,14 @@ export const useWatchlistStore = create<WatchlistState>()(
 
       getTrackedMovie: (movieId) => {
         return get().trackedMovies.find((m) => m.movieId === movieId);
+      },
+
+      toggleMovieFavorite: (movieId) => {
+        set((state) => ({
+          trackedMovies: state.trackedMovies.map((movie) =>
+            movie.movieId === movieId ? { ...movie, isFavorite: !movie.isFavorite } : movie
+          ),
+        }));
       },
 
       // ==========================================

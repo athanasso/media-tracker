@@ -36,6 +36,7 @@ export default function MovieDetailsScreen() {
   const removeMovie = useWatchlistStore((state) => state.removeMovie);
   const markMovieWatched = useWatchlistStore((state) => state.markMovieWatched);
   const markMovieUnwatched = useWatchlistStore((state) => state.markMovieUnwatched);
+  const toggleMovieFavorite = useWatchlistStore((state) => state.toggleMovieFavorite);
 
   const { data: movie, isLoading } = useQuery({
     queryKey: ['movie', movieId],
@@ -119,6 +120,18 @@ export default function MovieDetailsScreen() {
             <Ionicons name={watched ? 'eye' : 'eye-outline'} size={20} color={Colors.text} />
             <Text style={styles.actionButtonText}>{watched ? t.watched : t.markWatched}</Text>
           </TouchableOpacity>
+          {isTracked && (
+             <TouchableOpacity
+               style={[styles.favoriteButton, trackedMovie?.isFavorite && styles.favoriteButtonActive]}
+               onPress={() => toggleMovieFavorite(movieId)}
+             >
+               <Ionicons 
+                 name={trackedMovie?.isFavorite ? "heart" : "heart-outline"} 
+                 size={24} 
+                 color={trackedMovie?.isFavorite ? Colors.text : Colors.text} 
+               />
+             </TouchableOpacity>
+           )}
         </View>
 
         {/* Overview */}
@@ -171,6 +184,20 @@ const styles = StyleSheet.create({
   trackedButton: { backgroundColor: Colors.success },
   watchedButton: { backgroundColor: Colors.surface },
   watchedActiveButton: { backgroundColor: '#3b82f6' },
+  favoriteButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  favoriteButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
   actionButtonText: { color: Colors.text, fontWeight: '600', fontSize: 14 },
   section: { paddingHorizontal: 16, marginBottom: 24 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.text, marginBottom: 12 },

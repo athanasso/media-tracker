@@ -244,6 +244,7 @@ export interface TrackedShow {
   addedAt: string;
   watchedEpisodes: WatchedEpisode[];
   status: TrackingStatus;
+  isFavorite?: boolean;
 }
 
 export interface TrackedMovie {
@@ -253,6 +254,7 @@ export interface TrackedMovie {
   addedAt: string;
   watchedAt: string | null;
   status: TrackingStatus;
+  isFavorite?: boolean;
 }
 
 export type TrackingStatus = 

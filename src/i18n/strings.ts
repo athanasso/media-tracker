@@ -71,6 +71,7 @@ export const strings = {
     profile: 'Profile',
     watchlist: 'Watchlist', // Reusing 'shows', 'movies' from above
     planToWatch: 'Plan to Watch',
+    favorites: 'Favorites',
     watched: 'Watched',
     upcoming: 'Upcoming',
     all: 'All',
@@ -242,6 +243,7 @@ export const strings = {
     profile: 'Προφίλ',
     watchlist: 'Λίστα',
     planToWatch: 'Προς παρακολούθηση',
+    favorites: 'Αγαπημένα',
     watched: 'Ολοκληρωμένα',
     upcoming: 'Αναμενόμενα',
     all: 'Όλα',
@@ -289,7 +291,7 @@ export const strings = {
     sortDate: 'Ημερομηνία',
     sortStatus: 'Κατάσταση',
     sortAdded: 'Προστέθηκε',
-    
+
     // Tracking Status
     statusWatching: 'Παρακολουθώ',
     statusCompleted: 'Ολοκληρώθηκε',
