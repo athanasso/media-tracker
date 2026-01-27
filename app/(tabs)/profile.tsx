@@ -3,16 +3,18 @@
  */
 
 import { getMovieDetails, getShowDetails } from '@/src/services/api';
-import { getPosterUrl } from '@/src/services/api/client';
 import { useNotificationStore, useSettingsStore, useWatchlistStore } from '@/src/store';
 import { TrackedMovie, TrackedShow, TrackingStatus } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueries } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MovieItem from '../components/MovieItem';
+import ShowItem from '../components/ShowItem';
+import UpcomingShowItem from '../components/UpcomingShowItem';
 
 const Colors = {
   primary: '#E50914',
@@ -285,7 +287,7 @@ export default function ProfileScreen() {
   };
 
   // Get filtered and sorted shows
-  const getFilteredShows = (subTab: 'watched' | 'in_progress' | 'upcoming') => {
+  const filteredShows = useMemo(() => {
     let shows: (TrackedShow & { airDate?: string })[] = [];
     const showDetailsMap = new Map(
       (showDetailsQueries.data || []).map(show => [show.id, show])
@@ -295,23 +297,18 @@ export default function ProfileScreen() {
 
     const isCaughtUp = (show: TrackedShow) => {
         const details = showDetailsMap.get(show.showId);
-        // If 'completed', always true.
         if (show.status === 'completed') return true;
-        // If no details, default to not caught up if watching
         if (!details) return false;
         
         const lastEpisode = details.last_episode_to_air;
-        // If show ended or no last episode, consider caught up
         if (!lastEpisode) return true;
 
-        // Check if we watched the last aired episode
         return show.watchedEpisodes.some(
             e => e.seasonNumber === lastEpisode.season_number && e.episodeNumber === lastEpisode.episode_number
         );
     };
 
-    if (subTab === 'watched') {
-      // Watched tab: Completed shows OR Watching shows that are caught up
+    if (showsSubTab === 'watched') {
       shows = trackedShows.filter(s => {
           if (s.status === 'completed') return true;
           if (s.status === 'watching') {
@@ -319,16 +316,14 @@ export default function ProfileScreen() {
           }
           return false;
       });
-    } else if (subTab === 'in_progress') {
-      // In Progress tab: Watching shows that are NOT caught up
+    } else if (showsSubTab === 'in_progress') {
       shows = trackedShows.filter(s => {
           if (s.status === 'watching') {
               return !isCaughtUp(s);
           }
           return false;
       });
-    } else if (subTab === 'upcoming') {
-      // Upcoming: Shows with episodes in future
+    } else if (showsSubTab === 'upcoming') {
       shows = showsToFetchDetails
         .map(show => {
           const details = showDetailsMap.get(show.showId);
@@ -341,25 +336,23 @@ export default function ProfileScreen() {
           airDateObj.setHours(0, 0, 0, 0);
           
           if (airDateObj >= today) {
-            return { ...show, airDate };
+            return { ...show, airDate, next_episode_to_air: details.next_episode_to_air };
           }
           return null;
         })
-        .filter((show): show is TrackedShow & { airDate: string } => show !== null);
+        .filter((show): show is TrackedShow & { airDate: string; next_episode_to_air: any } => show !== null);
     }
 
     return filterAndSort(shows, showsSearch, showsSort, (s) => s.showName);
-  };
+  }, [trackedShows, showsSubTab, showDetailsQueries.data, showsToFetchDetails, showsSearch, showsSort]);
 
   // Get filtered and sorted movies
-  const getFilteredMovies = (subTab: 'watched' | 'upcoming') => {
+  const filteredMovies = useMemo(() => {
     let movies: (TrackedMovie & { releaseDate?: string })[] = [];
 
-    if (subTab === 'watched') {
-      // For movies, we include completed and watching in 'watched' as user requested only 'watched' and 'upcoming'
+    if (moviesSubTab === 'watched') {
       movies = trackedMovies.filter(m => m.status === 'completed' || m.status === 'watching');
-    } else if (subTab === 'upcoming') {
-      // Filter plan_to_watch movies with future release dates
+    } else if (moviesSubTab === 'upcoming') {
       const movieDetailsMap = new Map(
         (movieDetailsQueries.data || []).map(movie => [movie.id, movie])
       );
@@ -387,10 +380,10 @@ export default function ProfileScreen() {
     }
 
     return filterAndSort(movies, moviesSearch, moviesSort, (m) => m.movieTitle);
-  };
+  }, [trackedMovies, moviesSubTab, movieDetailsQueries.data, planToWatchMovies, moviesSearch, moviesSort]);
 
   // Get filtered and sorted plan to watch items
-  const getFilteredPlanItems = () => {
+  const filteredPlanItems = useMemo(() => {
     type PlanItem = (TrackedShow & { type: 'show' }) | (TrackedMovie & { type: 'movie' });
     let items: PlanItem[] = [];
 
@@ -446,12 +439,10 @@ export default function ProfileScreen() {
     });
 
     return sorted;
-  };
-
-
+  }, [planToWatchShows, planToWatchMovies, planSubTab, planSearch, planSort]);
 
   // Get filtered and sorted favorite items
-  const getFilteredFavorites = () => {
+  const filteredFavorites = useMemo(() => {
     type FavoriteItem = (TrackedShow & { type: 'show' }) | (TrackedMovie & { type: 'movie' });
     let items: FavoriteItem[] = [];
 
@@ -496,193 +487,51 @@ export default function ProfileScreen() {
     });
 
     return sorted;
-  };
+  }, [favoriteShows, favoriteMovies, favoritesSubTab, favoritesSearch, favoritesSort]);
 
-  const renderShowItem = ({ item }: { item: TrackedShow & { airDate?: string } }) => {
-    const hasNotif = item.airDate ? hasNotification(item.showId, 'show') : false;
-    const notifPref = item.airDate ? getNotificationPreference(item.showId, 'show') : undefined;
-    
-    return (
-      <TouchableOpacity style={styles.itemCard} onPress={() => router.push(`/show/${item.showId}`)}>
-        <Image source={{ uri: getPosterUrl(item.posterPath, 'small') || '' }} style={styles.itemPoster} />
-        <View style={styles.itemInfo}>
-          <Text style={styles.itemTitle} numberOfLines={2}>{item.showName}</Text>
-          <TouchableOpacity
-            style={[
-              styles.statusBadge, 
-              { backgroundColor: (activeTab === 'shows' && showsSubTab === 'in_progress') ? '#3b82f6' : getStatusColor(item.status) }
-            ]}
-            onPress={() => handleStatusChange(item.showId, 'show', item.status)}
-          >
-            <Text style={styles.statusText}>
-              {activeTab === 'shows' && showsSubTab === 'in_progress' ? t.inProgress :
-               item.status === 'watching' ? t.statusWatching :
-               item.status === 'completed' ? t.statusCompleted :
-               item.status === 'plan_to_watch' ? t.statusPlanToWatch :
-               item.status === 'on_hold' ? t.statusOnHold :
-               item.status === 'dropped' ? t.statusDropped : item.status}
-            </Text>
-          </TouchableOpacity>
-          {item.airDate ? (
-            <>
-              <Text style={styles.progressText}>{t.airDate}: {getFormattedDate(item.airDate)}</Text>
-              {hasNotif && notifPref && (
-                <Text style={styles.notificationText}>
-                  🔔 {t.notify} {notifPref.timing} {t.before}
-                </Text>
-              )}
-            </>
-          ) : (
-            <Text style={styles.progressText}>{getWatchedEpisodesCount(item.showId)} {t.episodesWatched}</Text>
-          )}
-        </View>
-        <View style={styles.itemActions}>
-          {item.airDate && (
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation();
-                handleNotificationPress(item.showId, 'show', item.showName, item.airDate!);
-              }}
-              style={styles.notificationButton}
-            >
-              <Ionicons 
-                name={hasNotif ? "notifications" : "notifications-outline"} 
-                size={20} 
-                color={hasNotif ? Colors.primary : Colors.textSecondary} 
-              />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity 
-            onPress={(e) => {
-              e.stopPropagation();
-              Alert.alert(t.removeConfirm, '', [{ text: t.cancel }, { text: t.remove, onPress: () => removeShow(item.showId) }]);
-            }}
-          >
-            <Ionicons name="trash-outline" size={20} color="#ef4444" />
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  // Render callbacks
+  const renderShowItem = useCallback(({ item }: { item: TrackedShow & { airDate?: string } }) => (
+    <ShowItem 
+      item={item}
+      activeTab={activeTab}
+      showsSubTab={showsSubTab}
+      hasNotification={hasNotification}
+      getNotificationPreference={getNotificationPreference}
+      getStatusColor={getStatusColor}
+      getFormattedDate={getFormattedDate}
+      t={t}
+      onStatusChange={handleStatusChange}
+      onNotificationPress={handleNotificationPress}
+      onRemove={removeShow}
+    />
+  ), [activeTab, showsSubTab, hasNotification, getNotificationPreference, getStatusColor, getFormattedDate, t, handleStatusChange, handleNotificationPress, removeShow]);
 
-  const renderUpcomingShowItem = ({ item }: { item: TrackedShow & { airDate: string; next_episode_to_air?: any } }) => {
-    const nextEpisode = item.next_episode_to_air;
-    const date = nextEpisode?.air_date || item.airDate; // Fallback to main item date if no episode date
-    if (!date) return null; // Should not happen for this tab
+  const renderUpcomingShowItem = useCallback(({ item }: { item: TrackedShow & { airDate: string; next_episode_to_air?: any } }) => (
+    <UpcomingShowItem 
+      item={item}
+      hasNotification={hasNotification}
+      getFormattedDate={getFormattedDate}
+      t={t}
+      onNotificationPress={handleNotificationPress}
+      onRemove={removeShow}
+    />
+  ), [hasNotification, getFormattedDate, t, handleNotificationPress, removeShow]);
 
-    return (
-      <TouchableOpacity style={styles.itemCard} onPress={() => router.push(`/show/${item.showId}`)}>
-        <Image
-          source={{ uri: getPosterUrl(item.posterPath, 'small') || '' }}
-          style={styles.itemPoster}
-          resizeMode="cover"
-        />
-        <View style={styles.itemInfo}>
-          <Text style={styles.itemTitle} numberOfLines={1}>
-            {item.showName}
-          </Text>
-          <View style={[styles.statusBadge, { backgroundColor: '#f59e0b' }]}>
-            <Text style={styles.statusText}>
-              {nextEpisode 
-                ? `${t.season.substring(0, 1)}:${nextEpisode.season_number} ${t.episodeN.replace('{number}', nextEpisode.episode_number.toString())}` 
-                : t.upcoming}
-            </Text>
-          </View>
-          <Text style={styles.progressText}>
-             {getFormattedDate(date)}
-          </Text>
-          {hasNotification(item.showId, 'show') && (
-            <Text style={styles.notificationText}>
-              <Ionicons name="notifications" size={10} /> {t.notify}
-            </Text>
-          )}
-        </View>
-        <TouchableOpacity 
-          style={styles.notificationButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleNotificationPress(item.showId, 'show', item.showName, date);
-          }}
-        >
-          <Ionicons 
-            name={hasNotification(item.showId, 'show') ? "notifications" : "notifications-outline"} 
-            size={24} 
-            color={hasNotification(item.showId, 'show') ? Colors.primary : Colors.textSecondary} 
-          />
-        </TouchableOpacity>
-        <TouchableOpacity 
-            onPress={(e) => {
-              e.stopPropagation();
-              Alert.alert(t.removeConfirm, '', [{ text: t.cancel }, { text: t.remove, onPress: () => removeShow(item.showId) }]);
-            }}
-          >
-            <Ionicons name="trash-outline" size={20} color="#ef4444" />
-          </TouchableOpacity>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderMovieItem = ({ item }: { item: TrackedMovie & { releaseDate?: string } }) => {
-    const hasNotif = item.releaseDate ? hasNotification(item.movieId, 'movie') : false;
-    const notifPref = item.releaseDate ? getNotificationPreference(item.movieId, 'movie') : undefined;
-    
-    return (
-      <TouchableOpacity style={styles.itemCard} onPress={() => router.push(`/movie/${item.movieId}`)}>
-        <Image source={{ uri: getPosterUrl(item.posterPath, 'small') || '' }} style={styles.itemPoster} />
-        <View style={styles.itemInfo}>
-          <Text style={styles.itemTitle} numberOfLines={2}>{item.movieTitle}</Text>
-          <TouchableOpacity
-            style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}
-            onPress={() => handleStatusChange(item.movieId, 'movie', item.status)}
-          >
-            <Text style={styles.statusText}>
-              {(activeTab === 'movies' && moviesSubTab === 'upcoming') ? t.upcoming :
-               item.status === 'watching' ? t.statusWatching :
-               item.status === 'completed' ? t.statusCompleted :
-               item.status === 'plan_to_watch' ? t.statusPlanToWatch :
-               item.status === 'on_hold' ? t.statusOnHold :
-               item.status === 'dropped' ? t.statusDropped : item.status}
-            </Text>
-          </TouchableOpacity>
-          {item.releaseDate ? (
-            <>
-              <Text style={styles.progressText}>{t.releaseDate}: {getFormattedDate(item.releaseDate)}</Text>
-              {hasNotif && notifPref && (
-                <Text style={styles.notificationText}>
-                  🔔 {t.notify} {notifPref.timing} {t.before}
-                </Text>
-              )}
-            </>
-          ) : null}
-        </View>
-        <View style={styles.itemActions}>
-          {item.releaseDate && (
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation();
-                handleNotificationPress(item.movieId, 'movie', item.movieTitle, item.releaseDate!);
-              }}
-              style={styles.notificationButton}
-            >
-              <Ionicons 
-                name={hasNotif ? "notifications" : "notifications-outline"} 
-                size={20} 
-                color={hasNotif ? Colors.primary : Colors.textSecondary} 
-              />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity 
-            onPress={(e) => {
-              e.stopPropagation();
-              Alert.alert(t.removeConfirm, '', [{ text: t.cancel }, { text: t.remove, onPress: () => removeMovie(item.movieId) }]);
-            }}
-          >
-            <Ionicons name="trash-outline" size={20} color="#ef4444" />
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const renderMovieItem = useCallback(({ item }: { item: TrackedMovie & { releaseDate?: string } }) => (
+    <MovieItem 
+      item={item}
+      activeTab={activeTab}
+      moviesSubTab={moviesSubTab}
+      hasNotification={hasNotification}
+      getNotificationPreference={getNotificationPreference}
+      getStatusColor={getStatusColor}
+      getFormattedDate={getFormattedDate}
+      t={t}
+      onStatusChange={handleStatusChange}
+      onNotificationPress={handleNotificationPress}
+      onRemove={removeMovie}
+    />
+  ), [activeTab, moviesSubTab, hasNotification, getNotificationPreference, getStatusColor, getFormattedDate, t, handleStatusChange, handleNotificationPress, removeMovie]);
 
 
   const renderSortMenu = (type: 'shows' | 'movies' | 'plan' | 'favorites') => {
@@ -843,13 +692,17 @@ export default function ProfileScreen() {
             </View>
           ) : (
               <FlatList
-                data={getFilteredShows(showsSubTab)}
+                data={filteredShows}
                 keyExtractor={(item) => item.showId.toString()}
                 renderItem={(props) => showsSubTab === 'upcoming' 
                   ? renderUpcomingShowItem(props as any) 
                   : renderShowItem(props)
                 }
                 contentContainerStyle={styles.listContent}
+                initialNumToRender={10}
+                maxToRenderPerBatch={10}
+                windowSize={10}
+                removeClippedSubviews={true}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Ionicons name="tv-outline" size={64} color={Colors.textSecondary} />
@@ -885,10 +738,14 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <FlatList
-              data={getFilteredMovies(moviesSubTab)}
+              data={filteredMovies}
               keyExtractor={(item) => item.movieId.toString()}
               renderItem={renderMovieItem}
               contentContainerStyle={styles.listContent}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={10}
+              removeClippedSubviews={true}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Ionicons name="film-outline" size={64} color={Colors.textSecondary} />
@@ -924,7 +781,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           <FlatList
-            data={getFilteredFavorites()}
+            data={filteredFavorites}
             keyExtractor={(item, index) => {
               // Ensure unique keys
               const prefix = item.type === 'show' ? 'show' : 'movie';
@@ -933,6 +790,10 @@ export default function ProfileScreen() {
             }}
             renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
             contentContainerStyle={styles.listContent}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            removeClippedSubviews={true}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="heart-outline" size={64} color={Colors.textSecondary} />
@@ -964,7 +825,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           <FlatList
-            data={getFilteredPlanItems()}
+            data={filteredPlanItems}
             keyExtractor={(item, index) => {
               // Ensure unique keys by combining type and id (index as fallback for safety)
               const prefix = item.type === 'show' ? 'show' : 'movie';
@@ -974,6 +835,10 @@ export default function ProfileScreen() {
             }}
             renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
             contentContainerStyle={styles.listContent}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            removeClippedSubviews={true}
             ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="bookmark-outline" size={64} color={Colors.textSecondary} /><Text style={styles.emptyText}>{t.noPlanItems}</Text></View>}
           />
         </>
