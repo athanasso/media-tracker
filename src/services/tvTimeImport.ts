@@ -34,7 +34,7 @@ interface TVTimeMovie {
 interface TVTimeEpisode {
   number: number;
   special: boolean;
-  is_watched?: boolean; // User didn't strictly say this exists but implied by "is_watched" in general or derived from watched_at
+  is_watched?: boolean;
   watched_at?: string | null;
   id?: TVTimeIds;
 }
@@ -46,19 +46,30 @@ interface TVTimeSeason {
 
 interface TVTimeShow {
   title: string;
-  status: string; // e.g. 'up_to_date', 'watch_later', 'continuing', 'dead', 'archived'
+  status: string;
   seasons: TVTimeSeason[];
-  id?: TVTimeIds; // Optional based on description, but usually present
+  id?: TVTimeIds;
 }
 
 // Union type for the parsed JSON array
 type TVTimeItem = TVTimeMovie | TVTimeShow;
 
+export interface PendingImportItem {
+  original: TVTimeItem;
+  match: {
+    id: number;
+    title?: string;
+    media_type: 'tv' | 'movie';
+    posterPath: string | null;
+    releaseDate?: string;
+  };
+  type: 'movie' | 'show';
+}
+
 // ==========================================
 // HELPERS
 // ==========================================
 
-// Map TV Time status to our status
 function mapTVTimeStatus(status: string): TrackingStatus {
   const s = status?.toLowerCase() || '';
   if (s.includes('up_to_date') || s.includes('continuing') || s.includes('watching')) return 'watching';
@@ -68,7 +79,6 @@ function mapTVTimeStatus(status: string): TrackingStatus {
   return 'plan_to_watch';
 }
 
-// Find item by external ID (TVDB or IMDB)
 async function findByExternalId(
   id: string | number,
   source: 'tvdb_id' | 'imdb_id'
@@ -80,16 +90,9 @@ async function findByExternalId(
     
     const data = response.data;
     
-    // Prioritize results based on what we find
-    if (data.tv_results?.length > 0) {
-      return { ...data.tv_results[0], media_type: 'tv' };
-    }
-    if (data.movie_results?.length > 0) {
-      return { ...data.movie_results[0], media_type: 'movie' };
-    }
-    if (data.tv_episode_results?.length > 0) {
-       return { ...data.tv_episode_results[0], media_type: 'tv' };
-    }
+    if (data.tv_results?.length > 0) return { ...data.tv_results[0], media_type: 'tv' };
+    if (data.movie_results?.length > 0) return { ...data.movie_results[0], media_type: 'movie' };
+    if (data.tv_episode_results?.length > 0) return { ...data.tv_episode_results[0], media_type: 'tv' };
     
     return null;
   } catch (error) {
@@ -98,11 +101,10 @@ async function findByExternalId(
   }
 }
 
-// Search TMDB for a title and get the ID
 async function findTMDBMatch(
   item: TVTimeItem,
   type: 'movie' | 'show'
-): Promise<{ id: number; posterPath: string | null } | null> {
+): Promise<{ id: number; media_type: 'tv' | 'movie'; posterPath: string | null; title?: string; releaseDate?: string; isExactMatch: boolean } | null> {
   try {
     const { title, id } = item;
 
@@ -112,7 +114,9 @@ async function findTMDBMatch(
       if (match && ((type === 'movie' && match.media_type === 'movie') || (type === 'show' && match.media_type === 'tv'))) {
         return { 
           id: match.id, 
-          posterPath: match.poster_path 
+          media_type: match.media_type as 'tv' | 'movie',
+          posterPath: match.poster_path,
+          isExactMatch: true
         };
       }
     }
@@ -123,7 +127,9 @@ async function findTMDBMatch(
       if (match && ((type === 'movie' && match.media_type === 'movie') || (type === 'show' && match.media_type === 'tv'))) {
          return { 
            id: match.id, 
-           posterPath: match.poster_path 
+           media_type: match.media_type as 'tv' | 'movie',
+           posterPath: match.poster_path,
+           isExactMatch: true
          };
       }
     }
@@ -134,16 +140,35 @@ async function findTMDBMatch(
     if (results.results && results.results.length > 0) {
       if (type === 'show') {
          const tvMatch = results.results.find(r => r.media_type === 'tv');
-         if (tvMatch) return { id: tvMatch.id, posterPath: tvMatch.poster_path || null };
+         if (tvMatch) return { 
+             id: tvMatch.id, 
+             media_type: 'tv', 
+             posterPath: tvMatch.poster_path || null,
+             title: tvMatch.name,
+             releaseDate: tvMatch.first_air_date,
+             isExactMatch: false 
+         };
       } else {
          const movieMatch = results.results.find(r => r.media_type === 'movie');
-         if (movieMatch) return { id: movieMatch.id, posterPath: movieMatch.poster_path || null };
+         if (movieMatch) return { 
+             id: movieMatch.id, 
+             media_type: 'movie', 
+             posterPath: movieMatch.poster_path || null,
+             title: movieMatch.title,
+             releaseDate: movieMatch.release_date,
+             isExactMatch: false 
+         };
       }
       
-      // If strict match failed, check generic
        const first = results.results[0];
        if ((type === 'show' && first.media_type === 'tv') || (type === 'movie' && first.media_type === 'movie')) {
-         return { id: first.id, posterPath: first.poster_path || null };
+         return { 
+             id: first.id, 
+             media_type: first.media_type,
+             posterPath: first.poster_path || null,
+             title: (first as any).title || (first as any).name,
+             isExactMatch: false
+         };
        }
     }
 
@@ -154,33 +179,103 @@ async function findTMDBMatch(
   }
 }
 
-// Import progress callback type
+function createTrackedMovie(item: TVTimeMovie, tmdbId: number, posterPath: string | null): TrackedMovie {
+  const isWatched = !!item.is_watched || !!item.watched_at;
+  return {
+    movieId: tmdbId,
+    movieTitle: item.title,
+    posterPath: posterPath,
+    addedAt: item.watched_at || new Date().toISOString(),
+    watchedAt: isWatched ? (item.watched_at || new Date().toISOString()) : null,
+    status: isWatched ? 'completed' : 'plan_to_watch',
+  };
+}
+
+function createTrackedShow(item: TVTimeShow, tmdbId: number, posterPath: string | null): TrackedShow {
+  const watchedEpisodes: WatchedEpisode[] = [];
+  const now = new Date().toISOString();
+
+  if (item.seasons) {
+    for (const season of item.seasons) {
+      if (!season.episodes) continue;
+      
+      for (const episode of season.episodes) {
+        if (!episode.special && (episode.watched_at || episode.is_watched)) {
+          watchedEpisodes.push({
+            showId: tmdbId,
+            seasonNumber: season.number,
+            episodeNumber: episode.number,
+            episodeId: episode.id?.tvdb || 0,
+            watchedAt: episode.watched_at || now,
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    showId: tmdbId,
+    showName: item.title,
+    posterPath: posterPath,
+    addedAt: now,
+    status: mapTVTimeStatus(item.status),
+    watchedEpisodes,
+  };
+}
+
+export function processPendingImports(
+    items: PendingImportItem[]
+): { shows: number; movies: number } {
+    const store = useWatchlistStore.getState();
+    const newShows: TrackedShow[] = [];
+    const newMovies: TrackedMovie[] = [];
+    let showCount = 0;
+    let movieCount = 0;
+
+    items.forEach(pending => {
+        if (pending.type === 'movie') {
+            const movie = createTrackedMovie(pending.original as TVTimeMovie, pending.match.id, pending.match.posterPath);
+            if (!store.trackedMovies.find(m => m.movieId === movie.movieId)) {
+                newMovies.push(movie);
+                movieCount++;
+            }
+        } else {
+            const show = createTrackedShow(pending.original as TVTimeShow, pending.match.id, pending.match.posterPath);
+             if (!store.trackedShows.find(s => s.showId === show.showId)) {
+                newShows.push(show);
+                showCount++;
+            }
+        }
+    });
+
+    if (newShows.length > 0 || newMovies.length > 0) {
+      useWatchlistStore.setState({
+        trackedShows: [...store.trackedShows, ...newShows],
+        trackedMovies: [...store.trackedMovies, ...newMovies],
+      });
+    }
+
+    return { shows: showCount, movies: movieCount };
+}
+
 type ProgressCallback = (current: number, total: number, title: string) => void;
 
-/**
- * Import TV Time JSON data
- */
 export async function importFromTVTime(
   onProgress?: ProgressCallback
-): Promise<{ shows: number; movies: number; failed: string[] }> {
-  const result = { shows: 0, movies: 0, failed: [] as string[] };
+): Promise<{ shows: number; movies: number; failed: string[]; pending: PendingImportItem[] }> {
+  const result = { shows: 0, movies: 0, failed: [] as string[], pending: [] as PendingImportItem[] };
   const language = useSettingsStore.getState().language;
   const t = strings[language] || strings.en;
 
   try {
-    // Pick the JSON file
     const docResult = await DocumentPicker.getDocumentAsync({
       type: 'application/json',
       copyToCacheDirectory: true,
     });
 
-    if (docResult.canceled || !docResult.assets?.[0]) {
-      return result;
-    }
+    if (docResult.canceled || !docResult.assets?.[0]) return result;
 
     const pickedFile = docResult.assets[0];
-    
-    // Read and parse JSON
     const file = new File(pickedFile.uri);
     const content = await file.text();
     let tvTimeData: TVTimeItem[];
@@ -201,22 +296,18 @@ export async function importFromTVTime(
     const newShows: TrackedShow[] = [];
     const newMovies: TrackedMovie[] = [];
     const total = tvTimeData.length;
-
-    // Detect Type based on first item
+    
+    // Detect Type based on first item being processed (simple check, or we could pass it in)
+    // We can just check the first item to see if it has 'seasons'
     const firstItem = tvTimeData[0];
-    const isShowImport = 'seasons' in firstItem; // Only shows have seasons array
+    const isShowImport = 'seasons' in firstItem;
 
-    // Process each item
     for (let i = 0; i < tvTimeData.length; i++) {
       const item = tvTimeData[i];
-      
-      // Update progress
       onProgress?.(i + 1, total, item.title || 'Unknown');
 
-      // Skip invalid items
       if (!item.title) continue;
 
-      // Find TMDB Match
       const tmdbMatch = await findTMDBMatch(item, isShowImport ? 'show' : 'movie');
 
       if (!tmdbMatch) {
@@ -224,76 +315,40 @@ export async function importFromTVTime(
         continue;
       }
 
-      if (!isShowImport) {
-        // MOVIE PROCESSING (movies.json)
-        const movieItem = item as TVTimeMovie;
+      if (!tmdbMatch.isExactMatch) {
+          result.pending.push({
+              original: item,
+              match: {
+                  id: tmdbMatch.id,
+                  title: tmdbMatch.title,
+                  media_type: tmdbMatch.media_type,
+                  posterPath: tmdbMatch.posterPath,
+                  releaseDate: tmdbMatch.releaseDate,
+              },
+              type: isShowImport ? 'show' : 'movie'
+          });
+          continue;
+      }
+
+      if (tmdbMatch.media_type === 'movie') {
         const existingMovie = store.trackedMovies.find(m => m.movieId === tmdbMatch.id);
-        
         if (!existingMovie) {
-          // Determine watched status
-          // "watched_at / is_watched": Data regarding viewing history.
-          const isWatched = !!movieItem.is_watched || !!movieItem.watched_at;
-          
-          const movie: TrackedMovie = {
-            movieId: tmdbMatch.id,
-            movieTitle: movieItem.title,
-            posterPath: tmdbMatch.posterPath,
-            addedAt: movieItem.watched_at || new Date().toISOString(),
-            watchedAt: isWatched ? (movieItem.watched_at || new Date().toISOString()) : null,
-            status: isWatched ? 'completed' : 'plan_to_watch',
-          };
+          const movie = createTrackedMovie(item as TVTimeMovie, tmdbMatch.id, tmdbMatch.posterPath);
           newMovies.push(movie);
           result.movies++;
         }
       } else {
-        // SHOW PROCESSING (shows.json)
-        const showItem = item as TVTimeShow;
         const existingShow = store.trackedShows.find(s => s.showId === tmdbMatch.id);
-
         if (!existingShow) {
-          const watchedEpisodes: WatchedEpisode[] = [];
-          const now = new Date().toISOString();
-
-          if (showItem.seasons) {
-            for (const season of showItem.seasons) {
-              if (!season.episodes) continue;
-              
-              for (const episode of season.episodes) {
-                // "Episode Level: ... special flag, and watched_at status."
-                // Only normal episodes unless we want specials? Usually skip specials for metrics correctness unless tracked.
-                if (!episode.special && (episode.watched_at || episode.is_watched)) {
-                  watchedEpisodes.push({
-                    showId: tmdbMatch.id,
-                    seasonNumber: season.number,
-                    episodeNumber: episode.number,
-                    episodeId: episode.id?.tvdb || 0, // Placeholder
-                    watchedAt: episode.watched_at || now,
-                  });
-                }
-              }
-            }
-          }
-
-          const show: TrackedShow = {
-            showId: tmdbMatch.id,
-            showName: showItem.title,
-            posterPath: tmdbMatch.posterPath,
-            addedAt: now,
-            status: mapTVTimeStatus(showItem.status),
-            watchedEpisodes,
-          };
+          const show = createTrackedShow(item as TVTimeShow, tmdbMatch.id, tmdbMatch.posterPath);
           newShows.push(show);
           result.shows++;
         }
       }
 
-      // Add small delay to avoid rate limiting
-      if (i % 5 === 0) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
-      }
+      if (i % 5 === 0) await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
-    // Add all new items to store
     if (newShows.length > 0 || newMovies.length > 0) {
       useWatchlistStore.setState({
         trackedShows: [...store.trackedShows, ...newShows],
@@ -308,5 +363,4 @@ export async function importFromTVTime(
     return result;
   }
 }
-
 export default { importFromTVTime };

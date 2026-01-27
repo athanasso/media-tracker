@@ -77,8 +77,9 @@ export default function StatsScreen() {
     // Time Spent
     const timeSpent = trackedMovies.reduce((acc, movie) => {
         // Count if status is completed OR watchedAt is present
-        if ((movie.status === 'completed' || movie.status === 'watching' || movie.watchedAt) && movie.runtime) {
-            return acc + movie.runtime;
+        // Use fall back runtime of 120 minutes if unknown (common for imports)
+        if (movie.status === 'completed' || movie.status === 'watching' || movie.watchedAt) {
+            return acc + (movie.runtime || 120);
         }
         return acc;
     }, 0);

@@ -13,6 +13,7 @@ import {
   Linking,
   Modal,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -23,7 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { strings } from '@/src/i18n/strings';
 import { exportWatchlistData, getExportPreview, importWatchlistData } from '@/src/services/dataExport';
-import { importFromTVTime } from '@/src/services/tvTimeImport';
+import { importFromTVTime, PendingImportItem, processPendingImports } from '@/src/services/tvTimeImport';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
 
 // Theme colors
@@ -46,6 +47,10 @@ export default function SettingsScreen() {
   const [isImporting, setIsImporting] = useState(false);
   const [isTVTimeImporting, setIsTVTimeImporting] = useState(false);
   const [tvTimeProgress, setTVTimeProgress] = useState({ current: 0, total: 0, title: '' });
+  const [pendingImports, setPendingImports] = useState<PendingImportItem[]>([]);
+  const [missedImports, setMissedImports] = useState<string[]>([]);
+  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [selectedPending, setSelectedPending] = useState<Set<number>>(new Set());
 
   const { clearWatchlist } = useWatchlistStore();
   const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage } = useSettingsStore();
@@ -92,19 +97,19 @@ export default function SettingsScreen() {
 
       setIsTVTimeImporting(false);
 
-      if (result.shows > 0 || result.movies > 0) {
+      if (result.pending.length > 0 || result.failed.length > 0) {
+        setPendingImports(result.pending);
+        setMissedImports(result.failed);
+        // Select all pending by default
+        setSelectedPending(new Set(result.pending.map((_, i) => i)));
+        setShowPendingModal(true);
+      } else if (result.shows > 0 || result.movies > 0) {
         let message = t.importSuccessBody
           .replace('{shows}', result.shows.toString())
           .replace('{movies}', result.movies.toString());
-        if (result.failed.length > 0) {
-          message += t.importPartialError.replace('{count}', result.failed.length.toString());
-        }
         Alert.alert(t.importComplete, message);
-      } else if (result.failed.length > 0) {
-        Alert.alert(
-          t.importFailed,
-          t.importMatchedError.replace('{count}', result.failed.length.toString())
-        );
+      } else {
+        Alert.alert(t.importFailed, t.noData);
       }
     } catch {
       setIsTVTimeImporting(false);
@@ -112,6 +117,47 @@ export default function SettingsScreen() {
     } finally {
       // Allow screen to sleep again
       deactivateKeepAwake('tvtime-import');
+    }
+  };
+
+  const handleConfirmPending = () => {
+    const itemsToImport = pendingImports.filter((_, i) => selectedPending.has(i));
+    const result = processPendingImports(itemsToImport);
+    
+    setShowPendingModal(false);
+    setPendingImports([]);
+    setMissedImports([]);
+    setSelectedPending(new Set());
+
+    Alert.alert(
+      t.importComplete,
+      t.importSuccessBody
+        .replace('{shows}', result.shows.toString())
+        .replace('{movies}', result.movies.toString())
+    );
+  };
+
+  const togglePendingItem = (index: number) => {
+    const newSelected = new Set(selectedPending);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedPending(newSelected);
+  };
+
+  const handleShareMissed = async () => {
+    if (missedImports.length === 0) return;
+    
+    try {
+      const message = missedImports.join('\n');
+      await Share.share({
+        message,
+        title: t.missedMatches,
+      });
+    } catch (error) {
+      console.error('Error sharing missed items:', error);
     }
   };
 
@@ -374,7 +420,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.menuContent}>
                 <Text style={styles.menuTitle}>{t.version}</Text>
-                <Text style={styles.menuSubtitle}>1.2.0</Text>
+                <Text style={styles.menuSubtitle}>1.3.0</Text>
               </View>
             </View>
           </View>
@@ -414,6 +460,98 @@ export default function SettingsScreen() {
             </Text>
           </View>
         </View>
+      </Modal>
+
+      {/* Pending Imports Review Modal */}
+      <Modal
+        visible={showPendingModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalHeaderTitle}>{t.reviewMatches || 'Review Matches'}</Text>
+            <TouchableOpacity onPress={() => setShowPendingModal(false)}>
+              <Text style={styles.modalCloseText}>{t.cancel}</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.modalSubHeader}>
+            {t.reviewMatchesDescription || 'Some items could not be matched exactly. Please review suggested matches.'}
+          </Text>
+
+          <ScrollView style={styles.pendingList} contentContainerStyle={{ paddingBottom: 100 }}>
+            {pendingImports.length > 0 && (
+              <>
+                <Text style={styles.listSectionTitle}>{t.pendingMatches || 'Pending Matches'}</Text>
+                {pendingImports.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.pendingItem,
+                      selectedPending.has(index) && styles.pendingItemSelected
+                    ]}
+                    onPress={() => togglePendingItem(index)}
+                  >
+                    <View style={styles.checkbox}>
+                      {selectedPending.has(index) && (
+                        <Ionicons name="checkmark" size={16} color="white" />
+                      )}
+                    </View>
+                    
+                    <View style={styles.pendingContent}>
+                      <Text style={styles.pendingLabel}>Original:</Text>
+                      <Text style={styles.pendingTitle}>{item.original.title}</Text>
+                      
+                      <View style={styles.matchContainer}>
+                        <Ionicons name="arrow-forward" size={16} color={Colors.primary} style={{ marginRight: 8 }} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.pendingLabel}>Match:</Text>
+                            <Text style={styles.pendingMatchTitle}>
+                              {item.match.title} 
+                              {item.match.releaseDate ? ` (${item.match.releaseDate.substring(0,4)})` : ''}
+                            </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+
+            {missedImports.length > 0 && (
+              <>
+                <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
+                   <Text style={[styles.listSectionTitle, { color: Colors.error, marginBottom: 0 }]}>
+                    {t.missedMatches || 'Not Matched'} ({missedImports.length})
+                  </Text>
+                  <TouchableOpacity onPress={handleShareMissed} style={styles.shareButton}>
+                    <Ionicons name="share-outline" size={16} color={Colors.error} />
+                    <Text style={styles.shareButtonText}>{t.shareList}</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                {missedImports.map((title, index) => (
+                  <View key={`missed-${index}`} style={styles.missedItem}>
+                    <Ionicons name="alert-circle-outline" size={20} color={Colors.error} />
+                    <Text style={styles.missedTitle}>{title}</Text>
+                  </View>
+                ))}
+              </>
+            )}
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+             <TouchableOpacity 
+               style={styles.confirmButton}
+               onPress={handleConfirmPending}
+             >
+               <Text style={styles.confirmButtonText}>
+                 {t.importSelected || 'Import Selected'} ({selectedPending.size})
+                </Text>
+             </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </Modal>
     </>
   );
@@ -616,5 +754,143 @@ const styles = StyleSheet.create({
   helpText: {
     fontSize: 11,
     color: Colors.textMuted,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  modalCloseText: {
+    fontSize: 16,
+    color: Colors.primary,
+  },
+  modalSubHeader: {
+    padding: 16,
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  pendingList: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  pendingItem: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+  },
+  pendingItemSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.surfaceLight,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    marginRight: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  pendingContent: {
+    flex: 1,
+  },
+  pendingLabel: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  pendingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+  },
+  pendingMatchTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.success,
+  },
+  matchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  modalFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  confirmButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  listSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  missedItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    padding: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.error,
+  },
+  missedTitle: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    marginLeft: 12,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    padding: 6,
+    backgroundColor: Colors.error + '20',
+    borderRadius: 8,
+  },
+  shareButtonText: {
+    fontSize: 12,
+    color: Colors.error,
+    fontWeight: '600',
   },
 });

@@ -185,13 +185,19 @@ Upcoming items show only content from your "plan to watch" list that has future 
 4. Choose "Merge" or "Replace All"
 
 ### TV Time Import
-Import your existing watchlist from TV Time exports:
+Import your existing watchlist from TV Time exports with intelligent matching:
 1. Go to Profile → Settings
 2. Tap "Import from TV Time"
 3. Select your export file:
    - **movies.json** for movies
    - **shows.json** for TV shows (includes full season/episode progress)
-4. Your library will be automatically populated with correct statuses and progress
+4. **Intelligent Matching**:
+   - Items with exact ID matches are imported automatically.
+   - Items matched by Title are flagged as "Pending" for your review.
+   - You can Accept or Ignore pending matches in the **Review Matches** modal.
+   - Items that cannot be matched are listed as "Not Matched" for your reference.
+   - **Extract**: You can easily share or extract the list of unmatched items to verify them manually.
+5. Your library will be populated with correct statuses and progress.
 
 ## 🔧 Scripts
 
