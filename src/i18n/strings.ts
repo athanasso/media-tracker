@@ -11,7 +11,11 @@ export const strings = {
     github: 'GitHub Repository',
     version: 'Version',
     
-    // Data Management
+    // Calendar
+    calendar: 'Calendar',
+    upcomingCalendar: 'Upcoming Calendar',
+    upcomingReleases: 'Upcoming Releases',
+    noReleasesDay: 'No releases on this day',
     yourLibrary: 'Your Library',
     shows: 'Shows',
     movies: 'Movies',
@@ -207,7 +211,11 @@ export const strings = {
     github: 'Αποθετήριο GitHub',
     version: 'Έκδοση',
     
-    // Data Management
+    // Calendar
+    calendar: 'Ημερολόγιο',
+    upcomingCalendar: 'Ημερολόγιο Κυκλοφοριών',
+    upcomingReleases: 'Προσεχείς Κυκλοφορίες',
+    noReleasesDay: 'Καμία κυκλοφορία αυτή τη μέρα',
     yourLibrary: 'Η Βιβλιοθήκη σας',
     shows: 'Σειρές',
     movies: 'Ταινίες',

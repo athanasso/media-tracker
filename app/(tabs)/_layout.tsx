@@ -60,6 +60,8 @@ export default function TabLayout() {
         }}
       />
 
+
+
       {/* Search Tab */}
       <Tabs.Screen
         name="search"
@@ -68,6 +70,21 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons 
               name={focused ? 'search' : 'search-outline'} 
+              size={24} 
+              color={color} 
+            />
+          ),
+        }}
+      />
+
+      {/* Calendar Tab */}
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: t.calendar,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? 'calendar' : 'calendar-outline'} 
               size={24} 
               color={color} 
             />
