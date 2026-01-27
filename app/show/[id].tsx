@@ -92,6 +92,7 @@ export default function ShowDetailsScreen() {
   const markSeasonWatched = useWatchlistStore((state) => state.markSeasonWatched);
   const markShowWatched = useWatchlistStore((state) => state.markShowWatched);
   const toggleShowFavorite = useWatchlistStore((state) => state.toggleShowFavorite);
+  const updateShowStatus = useWatchlistStore((state) => state.updateShowStatus);
 
   // Derive tracking state from the subscribed array
   const trackedShow = trackedShows.find((s) => s.showId === showId);
@@ -406,13 +407,27 @@ export default function ShowDetailsScreen() {
               />
             </TouchableOpacity>
           )}
-          
-          {isTracked && watchedCount > 0 && (
-            <View style={styles.progressBadge}>
-              <Ionicons name="eye" size={14} color={Colors.success} />
-              <Text style={styles.progressBadgeText}>{watchedCount} watched</Text>
-            </View>
+
+          {isTracked && trackedShow?.status !== 'dropped' && (
+            <TouchableOpacity
+              style={styles.dropButton}
+              onPress={() => {
+                Alert.alert(
+                  t.drop,
+                  `${t.changeStatus} -> ${t.statusDropped}?`,
+                  [
+                    { text: t.cancel, style: 'cancel' },
+                    { text: t.confirm, onPress: () => updateShowStatus(showId, 'dropped') }
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="close-circle-outline" size={20} color="#ffffff" />
+              <Text style={styles.dropButtonText}>{t.drop}</Text>
+            </TouchableOpacity>
           )}
+          
+
         </View>
 
         {/* ===== SUMMARY ===== */}
@@ -785,6 +800,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: Colors.text,
+  },
+  dropButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#dc2626', // Red color
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    justifyContent: 'center',
+    height: 48,
+  },
+  dropButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   progressBadge: {
     flexDirection: 'row',

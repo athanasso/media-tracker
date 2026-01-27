@@ -146,7 +146,8 @@ export const useWatchlistStore = create<WatchlistState>()(
               ? {
                   ...s,
                   watchedEpisodes: [...s.watchedEpisodes, newWatchedEpisode],
-                  status: s.status === 'plan_to_watch' ? 'watching' : s.status,
+                  // If status is plan_to_watch or dropped, switch to watching.
+                  status: (s.status === 'plan_to_watch' || s.status === 'dropped') ? 'watching' : s.status,
                 }
               : s
           ),
@@ -209,7 +210,8 @@ export const useWatchlistStore = create<WatchlistState>()(
               ? {
                   ...s,
                   watchedEpisodes: [...s.watchedEpisodes, ...watchedEpisodes],
-                  status: s.status === 'plan_to_watch' ? 'watching' : s.status,
+                  // If status is plan_to_watch or dropped, switch to watching.
+                  status: (s.status === 'plan_to_watch' || s.status === 'dropped') ? 'watching' : s.status,
                 }
               : s
           ),

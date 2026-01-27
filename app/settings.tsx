@@ -9,18 +9,18 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { Stack } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Linking,
-  Modal,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Linking,
+    Modal,
+    ScrollView,
+    Share,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -123,7 +123,7 @@ export default function SettingsScreen() {
   const [detailsItem, setDetailsItem] = useState<PendingImportItem | null>(null);
 
   const { clearWatchlist } = useWatchlistStore();
-  const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage } = useSettingsStore();
+  const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage, showDroppedTab, toggleShowDroppedTab } = useSettingsStore();
   
   const t = strings[language] || strings.en;
 
@@ -369,6 +369,30 @@ export default function SettingsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
             </TouchableOpacity>
+          </View>
+
+
+
+          {/* UI Settings Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t.uiSettings}</Text>
+            
+            <View style={styles.optionsContainer}>
+              <TouchableOpacity
+                style={[styles.optionItem, showDroppedTab && styles.optionItemActive]}
+                onPress={toggleShowDroppedTab}
+              >
+                <Text style={[styles.optionText, showDroppedTab && styles.optionTextActive]}>
+                  {t.showDroppedTab}
+                </Text>
+                {/* Switch-like appearance using Icons or just checkmark */}
+                <Ionicons 
+                  name={showDroppedTab ? "checkbox" : "square-outline"} 
+                  size={20} 
+                  color={showDroppedTab ? Colors.primary : Colors.textSecondary} 
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Language Section */}

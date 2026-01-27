@@ -168,6 +168,10 @@ export const strings = {
     movieCap: 'MOVIE',
     loading: 'Loading...',
 
+    // Settings Extras
+    uiSettings: 'UI Settings',
+    showDroppedTab: 'Show "Dropped" Tab',
+    
     // Details Screen (Show/Movie)
     loadingShow: 'Loading show details...',
     failedLoadShow: 'Failed to load show',
@@ -214,6 +218,7 @@ export const strings = {
     show: 'Show',
     movie: 'Movie',
     noItemsInList: 'No items in this list',
+    drop: 'Drop',
   },
   el: {
     // Settings
@@ -382,7 +387,11 @@ export const strings = {
     tvShow: 'ΣΕΙΡΑ',
     movieCap: 'ΤΑΙΝΙΑ',
     loading: 'Φόρτωση...',
-    
+
+    // Settings Extras
+    uiSettings: 'Ρυθμίσεις UI',
+    showDroppedTab: 'Προβολή καρτέλας "Διακοπή"',
+
     // Details Screen
     loadingShow: 'Φόρτωση λεπτομερειών...',
     failedLoadShow: 'Αποτυχία φόρτωσης',
@@ -429,5 +438,6 @@ export const strings = {
     show: 'Σειρά',
     movie: 'Ταινία',
     noItemsInList: 'Δεν υπάρχουν αντικείμενα στη λίστα',
+    drop: 'Διακοπή',
   }
 };

@@ -14,10 +14,12 @@ interface SettingsState {
   dateFormat: DateFormat;
   customDateFormat: string; // Used only if dateFormat is 'custom'
   language: Language;
+  showDroppedTab: boolean;
   
   setDateFormat: (format: DateFormat) => void;
   setCustomDateFormat: (format: string) => void;
   setLanguage: (lang: Language) => void;
+  toggleShowDroppedTab: () => void;
   getFormattedDate: (dateString: string | Date | null | undefined) => string;
 }
 
@@ -27,10 +29,12 @@ export const useSettingsStore = create<SettingsState>()(
       dateFormat: 'eu', // Default to European DD/MM/YYYY
       customDateFormat: 'DD/MM/YYYY',
       language: 'en',
+      showDroppedTab: true,
 
       setDateFormat: (format) => set({ dateFormat: format }),
       setCustomDateFormat: (format) => set({ customDateFormat: format }),
       setLanguage: (lang) => set({ language: lang }),
+      toggleShowDroppedTab: () => set((state) => ({ showDroppedTab: !state.showDroppedTab })),
 
       // Helper to format date based on current settings
       getFormattedDate: (dateInput) => {

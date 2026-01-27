@@ -33,7 +33,7 @@ type SortOption = 'name' | 'date' | 'status' | 'added';
 export default function ProfileScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'shows' | 'movies' | 'plan' | 'favorites'>('shows');
-  const [showsSubTab, setShowsSubTab] = useState<'watched' | 'in_progress' | 'upcoming'>('in_progress');
+  const [showsSubTab, setShowsSubTab] = useState<'watched' | 'in_progress' | 'upcoming' | 'dropped'>('in_progress');
   const [moviesSubTab, setMoviesSubTab] = useState<'watched' | 'upcoming'>('watched');
 
   const [planSubTab, setPlanSubTab] = useState<'shows' | 'movies' | 'all'>('all');
@@ -59,7 +59,15 @@ export default function ProfileScreen() {
   } = useNotificationStore();
   const { getFormattedDate, language } = useSettingsStore();
 
+  const { showDroppedTab } = useSettingsStore();
   const t = strings[language] || strings.en;
+
+  // If dropped tab is hidden but selected, switch to in_progress
+  useEffect(() => {
+    if (!showDroppedTab && showsSubTab === 'dropped') {
+      setShowsSubTab('in_progress');
+    }
+  }, [showDroppedTab, showsSubTab]);
 
   // Request notification permissions on mount
   useEffect(() => {
@@ -343,6 +351,8 @@ export default function ProfileScreen() {
           return null;
         })
         .filter((show): show is TrackedShow & { airDate: string; next_episode_to_air: any } => show !== null);
+    } else if (showsSubTab === 'dropped') {
+      shows = trackedShows.filter(s => s.status === 'dropped');
     }
 
     return filterAndSort(shows, showsSearch, showsSort, (s) => s.showName);
@@ -687,6 +697,14 @@ export default function ProfileScreen() {
             >
               <Text style={[styles.subTabText, showsSubTab === 'upcoming' && styles.activeSubTabText]}>{t.upcoming}</Text>
             </TouchableOpacity>
+            {showDroppedTab && (
+              <TouchableOpacity 
+                style={[styles.subTab, showsSubTab === 'dropped' && styles.activeSubTab]} 
+                onPress={() => setShowsSubTab('dropped')}
+              >
+                <Text style={[styles.subTabText, showsSubTab === 'dropped' && styles.activeSubTabText]}>{t.statusDropped}</Text>
+              </TouchableOpacity>
+            )}
           </View>
           {showsSubTab === 'upcoming' && showDetailsQueries.isLoading ? (
             <View style={styles.loadingContainer}>
