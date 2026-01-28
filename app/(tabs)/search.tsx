@@ -24,7 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { strings } from '@/src/i18n/strings';
 import { getTrendingAll, searchMulti } from '@/src/services/api';
 import { getPosterUrl } from '@/src/services/api/client';
-import { useSettingsStore } from '@/src/store';
+import { useSettingsStore, useWatchlistStore } from '@/src/store';
 import { MultiSearchResult } from '@/src/types';
 
 // App colors
@@ -70,6 +70,50 @@ export default function SearchScreen() {
     staleTime: 6 * 60 * 60 * 1000, // 6 hours
     gcTime: 6 * 60 * 60 * 1000,
   });
+
+  const { trackedShows, trackedMovies } = useWatchlistStore();
+
+  const getStatusInfo = useCallback((item: MultiSearchResult) => {
+    let status: string | undefined;
+    
+    if (item.media_type === 'tv') {
+      const show = trackedShows.find(s => s.showId === item.id);
+      status = show?.status;
+    } else if (item.media_type === 'movie') {
+      const movie = trackedMovies.find(m => m.movieId === item.id);
+      status = movie?.status;
+    }
+
+    if (!status) return null;
+
+    let color = Colors.primary;
+    let label = '';
+
+    switch (status) {
+      case 'watching':
+        color = '#22c55e';
+        label = t.statusWatching;
+        break;
+      case 'completed':
+        color = '#3b82f6';
+        label = t.statusCompleted;
+        break;
+      case 'plan_to_watch':
+        color = '#f59e0b';
+        label = t.statusPlanToWatch;
+        break;
+      case 'on_hold':
+        color = '#8b5cf6';
+        label = t.statusOnHold;
+        break;
+      case 'dropped':
+        color = '#ef4444';
+        label = t.statusDropped;
+        break;
+    }
+
+    return { color, label };
+  }, [trackedShows, trackedMovies, t]);
 
   const navigateToDetails = useCallback((item: MultiSearchResult) => {
     if (item.media_type === 'tv') {
@@ -125,6 +169,8 @@ export default function SearchScreen() {
     const date = dateStr ? new Date(dateStr) : null;
     const isFutureDate = date && date >= new Date(new Date().setHours(0, 0, 0, 0));
     
+    const statusInfo = getStatusInfo(item);
+    
     return (
       <TouchableOpacity
         style={styles.resultItem}
@@ -145,11 +191,18 @@ export default function SearchScreen() {
               <Text style={styles.resultTitle} numberOfLines={2}>
                 {item.name || item.title}
               </Text>
-              {upcoming && (
-                <View style={styles.upcomingBadge}>
-              <Text style={styles.upcomingBadgeText}>{t.upcomingBadge}</Text>
-                </View>
-              )}
+              <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                {upcoming && (
+                  <View style={styles.upcomingBadge}>
+                    <Text style={styles.upcomingBadgeText}>{t.upcomingBadge}</Text>
+                  </View>
+                )}
+                {statusInfo && (
+                  <View style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}>
+                    <Text style={styles.statusBadgeText}>{statusInfo.label}</Text>
+                  </View>
+                )}
+              </View>
             </View>
             <View style={styles.mediaTypeBadge}>
               <Text style={styles.mediaTypeBadgeText}>
@@ -476,5 +529,17 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 8,
     textAlign: 'center',
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusBadgeText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: Colors.text,
+    textTransform: 'uppercase',
   },
 });

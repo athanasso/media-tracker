@@ -27,7 +27,7 @@ interface ExportData {
   };
 }
 
-const EXPORT_VERSION = '2.0.0';
+const EXPORT_VERSION = '2.0.1';
 const APP_NAME = 'MediaTracker';
 
 /**
