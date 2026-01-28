@@ -230,24 +230,24 @@ export default function CalendarScreen() {
             {getFormattedDate(selectedDate)}
           </Text>
 
-          {isLoading && !calendarData[selectedDate] ? (
-            <View style={[styles.emptyContainer, { justifyContent: 'flex-start', paddingTop: 32 }]}>
-              <ActivityIndicator size="large" color={Colors.primary} />
-            </View>
-          ) : (
-            <FlatList
+          <FlatList
             data={calendarData[selectedDate] || []}
             keyExtractor={(item) => `${item.type}-${item.type === 'show' ? item.showId : item.movieId}`}
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
                 <View style={styles.emptyContainer}>
-                    <Ionicons name="calendar-outline" size={48} color={Colors.textSecondary} />
-                    <Text style={styles.emptyText}>{t.noReleasesDay}</Text>
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={Colors.primary} style={{ marginBottom: 12 }} />
+                    ) : (
+                      <Ionicons name="calendar-outline" size={48} color={Colors.textSecondary} />
+                    )}
+                    <Text style={styles.emptyText}>
+                      {isLoading ? t.loadingUpcomingShows : t.noReleasesDay}
+                    </Text>
                 </View>
             }
           />
-          )}
       </View>
     </SafeAreaView>
   );
