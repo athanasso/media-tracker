@@ -10,11 +10,15 @@ interface SettingsState {
   customDateFormat: string; // Used only if dateFormat is 'custom'
   language: Language;
   showDroppedTab: boolean;
+  showBooks: boolean;
+  showManga: boolean;
   
   setDateFormat: (format: DateFormat) => void;
   setCustomDateFormat: (format: string) => void;
   setLanguage: (lang: Language) => void;
   toggleShowDroppedTab: () => void;
+  toggleShowBooks: () => void;
+  toggleShowManga: () => void;
   getFormattedDate: (dateString: string | Date | null | undefined) => string;
 }
 
@@ -25,11 +29,15 @@ export const useSettingsStore = create<SettingsState>()(
       customDateFormat: 'DD/MM/YYYY',
       language: 'en',
       showDroppedTab: true,
+      showBooks: true,
+      showManga: true,
 
       setDateFormat: (format) => set({ dateFormat: format }),
       setCustomDateFormat: (format) => set({ customDateFormat: format }),
       setLanguage: (lang) => set({ language: lang }),
       toggleShowDroppedTab: () => set((state) => ({ showDroppedTab: !state.showDroppedTab })),
+      toggleShowBooks: () => set((state) => ({ showBooks: !state.showBooks })),
+      toggleShowManga: () => set((state) => ({ showManga: !state.showManga })),
 
       // Helper to format date based on current settings
       getFormattedDate: (dateInput) => {

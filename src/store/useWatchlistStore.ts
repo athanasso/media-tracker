@@ -4,6 +4,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import {
     TrackedMovie,
     TrackedShow,
+    TrackedBook,
+    TrackedManga,
     TrackingStatus,
     WatchedEpisode,
 } from '../types';
@@ -16,6 +18,8 @@ interface WatchlistState {
   // Data
   trackedShows: TrackedShow[];
   trackedMovies: TrackedMovie[];
+  trackedBooks: TrackedBook[];
+  trackedManga: TrackedManga[];
 
   // Show Actions
   addShow: (show: Omit<TrackedShow, 'addedAt' | 'watchedEpisodes' | 'status'>) => void;
@@ -46,6 +50,24 @@ interface WatchlistState {
   getTrackedMovie: (movieId: number) => TrackedMovie | undefined;
   toggleMovieFavorite: (movieId: number) => void;
 
+  // Book Actions
+  addBook: (book: Omit<TrackedBook, 'addedAt' | 'status'>) => void;
+  removeBook: (bookId: string) => void;
+  updateBookStatus: (bookId: string, status: TrackingStatus) => void;
+  updateBookProgress: (bookId: string, currentPage: number) => void;
+  isBookTracked: (bookId: string) => boolean;
+  getTrackedBook: (bookId: string) => TrackedBook | undefined;
+  toggleBookFavorite: (bookId: string) => void;
+
+  // Manga Actions
+  addManga: (manga: Omit<TrackedManga, 'addedAt' | 'status'>) => void;
+  removeManga: (mangaId: number) => void;
+  updateMangaStatus: (mangaId: number, status: TrackingStatus) => void;
+  updateMangaProgress: (mangaId: number, currentChapter: number, currentVolume: number) => void;
+  isMangaTracked: (mangaId: number) => boolean;
+  getTrackedManga: (mangaId: number) => TrackedManga | undefined;
+  toggleMangaFavorite: (mangaId: number) => void;
+
   // Utility Actions
   clearWatchlist: () => void;
 }
@@ -60,6 +82,14 @@ export const useWatchlistStore = create<WatchlistState>()(
       // Initial state
       trackedShows: [],
       trackedMovies: [],
+      trackedBooks: [],
+      trackedManga: [],
+
+      // ==========================================
+      // SHOW ACTIONS
+      // ==========================================
+      // ... (existing code, untouched by this specific StartLine target if careful, but wait, I can target "trackedMovies: []," specifically)
+
 
       // ==========================================
       // SHOW ACTIONS
@@ -378,11 +408,125 @@ export const useWatchlistStore = create<WatchlistState>()(
       },
 
       // ==========================================
+      // BOOK ACTIONS
+      // ==========================================
+      
+      addBook: (book) => {
+        const state = get();
+        if (state.isBookTracked(book.id)) return;
+
+        const newBook: TrackedBook = {
+          ...book,
+          addedAt: new Date().toISOString(),
+          status: 'plan_to_watch',
+        };
+
+        set((state) => ({
+          trackedBooks: [...state.trackedBooks, newBook],
+        }));
+      },
+
+      removeBook: (bookId) => {
+        set((state) => ({
+          trackedBooks: state.trackedBooks.filter((b) => b.id !== bookId),
+        }));
+      },
+
+      updateBookStatus: (bookId, status) => {
+        set((state) => ({
+          trackedBooks: state.trackedBooks.map((book) =>
+            book.id === bookId ? { ...book, status } : book
+          ),
+        }));
+      },
+
+      updateBookProgress: (bookId, currentPage) => {
+        set((state) => ({
+          trackedBooks: state.trackedBooks.map((book) =>
+            book.id === bookId ? { ...book, currentPage } : book
+          ),
+        }));
+      },
+
+      isBookTracked: (bookId) => {
+        return get().trackedBooks.some((b) => b.id === bookId);
+      },
+
+      getTrackedBook: (bookId) => {
+        return get().trackedBooks.find((b) => b.id === bookId);
+      },
+
+      toggleBookFavorite: (bookId) => {
+        set((state) => ({
+          trackedBooks: state.trackedBooks.map((book) =>
+            book.id === bookId ? { ...book, isFavorite: !book.isFavorite } : book
+          ),
+        }));
+      },
+
+      // ==========================================
+      // MANGA ACTIONS
+      // ==========================================
+
+      addManga: (manga) => {
+        const state = get();
+        if (state.isMangaTracked(manga.id)) return;
+
+        const newManga: TrackedManga = {
+          ...manga,
+          addedAt: new Date().toISOString(),
+          status: 'plan_to_watch',
+        };
+
+        set((state) => ({
+          trackedManga: [...state.trackedManga, newManga],
+        }));
+      },
+
+      removeManga: (mangaId) => {
+        set((state) => ({
+          trackedManga: state.trackedManga.filter((m) => m.id !== mangaId),
+        }));
+      },
+
+      updateMangaStatus: (mangaId, status) => {
+        set((state) => ({
+          trackedManga: state.trackedManga.map((manga) =>
+            manga.id === mangaId ? { ...manga, status } : manga
+          ),
+        }));
+      },
+
+      updateMangaProgress: (mangaId, currentChapter, currentVolume) => {
+        set((state) => ({
+          trackedManga: state.trackedManga.map((manga) =>
+            manga.id === mangaId ? { ...manga, currentChapter, currentVolume } : manga
+          ),
+        }));
+      },
+
+      isMangaTracked: (mangaId) => {
+        return get().trackedManga.some((m) => m.id === mangaId);
+      },
+
+      getTrackedManga: (mangaId) => {
+        return get().trackedManga.find((m) => m.id === mangaId);
+      },
+
+      toggleMangaFavorite: (mangaId) => {
+        set((state) => ({
+          trackedManga: state.trackedManga.map((manga) =>
+            manga.id === mangaId ? { ...manga, isFavorite: !manga.isFavorite } : manga
+          ),
+        }));
+      },
+
+      // ==========================================
       // UTILITY ACTIONS
       // ==========================================
 
       clearWatchlist: () => {
-        set({ trackedShows: [], trackedMovies: [] });
+        set({ trackedShows: [], trackedMovies: [], trackedBooks: [], trackedManga: [] });
       },
     }),
     {

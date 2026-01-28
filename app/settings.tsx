@@ -6,7 +6,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { Stack, useFocusEffect } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -32,6 +32,7 @@ import { importFromTVTime, PendingImportItem, processPendingImports } from '@/sr
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
 import { startOAuthFlow, signOut, isAuthenticated, getUserInfo, UserInfo } from '@/src/services/googleAuth';
 import { uploadBackup, syncFromDrive, listBackups } from '@/src/services/googleDrive';
+
 
 // Theme colors
 const Colors = {
@@ -114,6 +115,7 @@ function MatchDetailView({ id, type }: { id: number, type: 'movie' | 'show' }) {
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isTVTimeImporting, setIsTVTimeImporting] = useState(false);
@@ -129,7 +131,7 @@ export default function SettingsScreen() {
   const [isDriveLoading, setIsDriveLoading] = useState(false);
 
   const { clearWatchlist } = useWatchlistStore();
-  const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage, showDroppedTab, toggleShowDroppedTab } = useSettingsStore();
+  const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage, showDroppedTab, toggleShowDroppedTab, showBooks, toggleShowBooks, showManga, toggleShowManga } = useSettingsStore();
   
   const t = strings[language] || strings.en;
 
@@ -468,24 +470,30 @@ export default function SettingsScreen() {
             <Text style={styles.sectionTitle}>{t.dataManagement}</Text>
 
             {/* Current Stats */}
-            <View style={styles.statsCard}>
-              <Text style={styles.statsTitle}>{t.yourLibrary}</Text>
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{exportPreview.showCount}</Text>
-                  <Text style={styles.statLabel}>{t.shows}</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{exportPreview.movieCount}</Text>
-                  <Text style={styles.statLabel}>{t.movies}</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{exportPreview.episodeCount}</Text>
-                  <Text style={styles.statLabel}>{t.episodes}</Text>
-                </View>
-              </View>
+            <View style={styles.statsCardContainer}>
+              <TouchableOpacity 
+                style={styles.statsCardItem}
+                onPress={() => router.push({ pathname: '/stats', params: { type: 'shows' } })}
+              >
+                <Text style={styles.statNumber}>{exportPreview.showCount}</Text>
+                <Text style={styles.statLabel}>{t.shows}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.statsCardItem}
+                onPress={() => router.push({ pathname: '/stats', params: { type: 'movies' } })}
+              >
+                <Text style={styles.statNumber}>{exportPreview.movieCount}</Text>
+                <Text style={styles.statLabel}>{t.movies}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.statsCardItem}
+                onPress={() => router.push({ pathname: '/stats', params: { type: 'episodes' } })}
+              >
+                <Text style={styles.statNumber}>{exportPreview.episodeCount}</Text>
+                <Text style={styles.statLabel}>{t.episodes}</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Export Button */}
@@ -578,11 +586,38 @@ export default function SettingsScreen() {
                 <Text style={[styles.optionText, showDroppedTab && styles.optionTextActive]}>
                   {t.showDroppedTab}
                 </Text>
-                {/* Switch-like appearance using Icons or just checkmark */}
                 <Ionicons 
                   name={showDroppedTab ? "checkbox" : "square-outline"} 
                   size={20} 
                   color={showDroppedTab ? Colors.primary : Colors.textSecondary} 
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.optionItem, showBooks && styles.optionItemActive]}
+                onPress={toggleShowBooks}
+              >
+                <Text style={[styles.optionText, showBooks && styles.optionTextActive]}>
+                  {t.showBooksTab}
+                </Text>
+                <Ionicons 
+                  name={showBooks ? "checkbox" : "square-outline"} 
+                  size={20} 
+                  color={showBooks ? Colors.primary : Colors.textSecondary} 
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.optionItem, showManga && styles.optionItemActive]}
+                onPress={toggleShowManga}
+              >
+                <Text style={[styles.optionText, showManga && styles.optionTextActive]}>
+                  {t.showMangaTab}
+                </Text>
+                <Ionicons 
+                  name={showManga ? "checkbox" : "square-outline"} 
+                  size={20} 
+                  color={showManga ? Colors.primary : Colors.textSecondary} 
                 />
               </TouchableOpacity>
             </View>
@@ -707,7 +742,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.menuContent}>
                 <Text style={styles.menuTitle}>{t.version}</Text>
-                <Text style={styles.menuSubtitle}>2.0.1</Text>
+                <Text style={styles.menuSubtitle}>3.0.0</Text>
               </View>
             </View>
           </View>
@@ -941,14 +976,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statNumber: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.primary,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
   },
   statLabel: {
     fontSize: 12,
     color: Colors.textSecondary,
-    marginTop: 4,
+    marginTop: 2,
   },
   statDivider: {
     width: 1,
@@ -1340,4 +1375,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: Colors.textSecondary,
   },
+  statsCardContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    gap: 12,
+  },
+  statsCardItem: {
+    flex: 1,
+    alignItems: 'center',
+    cursor: 'pointer',
+  },
+
 });

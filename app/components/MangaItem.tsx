@@ -1,0 +1,200 @@
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { TrackedManga, TrackingStatus } from '@/src/types';
+
+interface MangaItemProps {
+  item: TrackedManga;
+  activeTab: string;
+  mangaSubTab: string;
+  getStatusColor: (status: TrackingStatus) => string;
+  getFormattedDate: (date: Date) => string;
+  t: any;
+  onStatusChange: (id: number, currentStatus: TrackingStatus) => void;
+  onRemove: (id: number) => void;
+  onUpdateProgress?: (id: number, chapter: number, volume: number) => void;
+}
+
+const MangaItem = ({ 
+  item, 
+  activeTab, 
+  mangaSubTab, 
+  getStatusColor, 
+  getFormattedDate, 
+  t, 
+  onStatusChange, 
+  onRemove,
+  onUpdateProgress
+}: MangaItemProps) => {
+  return (
+    <View style={styles.container}>
+      <Image 
+        source={{ uri: item.coverUrl || 'https://via.placeholder.com/100x150?text=No+Cover' }} 
+        style={styles.poster} 
+      />
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
+          <TouchableOpacity onPress={() => onRemove(item.id)}>
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.progressContainer}>
+           <View style={styles.progressRow}>
+             <Text style={styles.progressText}>
+               {t.chapters}: {item.currentChapter} / {item.totalChapters > 0 ? item.totalChapters : '?'}
+             </Text>
+             {onUpdateProgress && (
+               <View style={styles.miniControls}>
+                 <TouchableOpacity hitSlop={{top: 10, bottom: 10, left: 10, right: 10}} onPress={() => onUpdateProgress(item.id, Math.max(0, item.currentChapter - 1), item.currentVolume)}>
+                   <Ionicons name="remove-circle-outline" size={20} color="#a0a0a0" />
+                 </TouchableOpacity>
+                 <TouchableOpacity hitSlop={{top: 10, bottom: 10, left: 10, right: 10}} onPress={() => onUpdateProgress(item.id, item.currentChapter + 1, item.currentVolume)}>
+                   <Ionicons name="add-circle-outline" size={20} color="#a0a0a0" />
+                 </TouchableOpacity>
+               </View>
+             )}
+           </View>
+           
+           {item.totalChapters > 0 && (
+             <View style={styles.progressBarBg}>
+               <View 
+                 style={[
+                   styles.progressBarFill, 
+                   { width: `${Math.min(100, Math.round((item.currentChapter / item.totalChapters) * 100))}%` }
+                 ]} 
+               />
+             </View>
+           )}
+           
+           <View style={[styles.progressRow, { marginTop: 4 }]}>
+             <Text style={styles.progressTextVol}>
+               {t.volumes}: {item.currentVolume} / {item.totalVolumes > 0 ? item.totalVolumes : '?'}
+             </Text>
+             {onUpdateProgress && (
+               <View style={styles.miniControls}>
+                 <TouchableOpacity hitSlop={{top: 10, bottom: 10, left: 10, right: 10}} onPress={() => onUpdateProgress(item.id, item.currentChapter, Math.max(0, item.currentVolume - 1))}>
+                   <Ionicons name="remove-circle-outline" size={20} color="#a0a0a0" />
+                 </TouchableOpacity>
+                 <TouchableOpacity hitSlop={{top: 10, bottom: 10, left: 10, right: 10}} onPress={() => onUpdateProgress(item.id, item.currentChapter, item.currentVolume + 1)}>
+                   <Ionicons name="add-circle-outline" size={20} color="#a0a0a0" />
+                 </TouchableOpacity>
+               </View>
+             )}
+           </View>
+        </View>
+        
+        <View style={styles.footer}>
+           <TouchableOpacity 
+             style={[styles.statusButton, { borderColor: getStatusColor(item.status) }]}
+             onPress={() => onStatusChange(item.id, item.status)}
+           >
+             <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+               {item.status === 'watching' ? t.reading : 
+                item.status === 'completed' ? t.read :
+                item.status === 'plan_to_watch' ? t.planToRead :
+                item.status === 'dropped' ? t.statusDropped : item.status}
+             </Text>
+           </TouchableOpacity>
+           
+           <Text style={styles.date}>
+             {t.sortAdded}: {getFormattedDate(new Date(item.addedAt))}
+           </Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+    height: 140,
+  },
+  poster: {
+    width: 93,
+    height: 140,
+    backgroundColor: '#333',
+  },
+  content: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  title: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    flex: 1,
+    marginRight: 8,
+  },
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressText: {
+    color: '#a0a0a0',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  miniControls: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  progressTextVol: {
+    color: '#a0a0a0',
+    fontSize: 12,
+    // marginTop removed as handled by row container
+  },
+  progressBarBg: {
+    height: 4,
+    backgroundColor: '#333',
+    borderRadius: 2,
+  },
+  progressBarFill: {
+    height: 4,
+    backgroundColor: '#22c55e',
+    borderRadius: 2,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center', // Changed from flex-end to center to align items nicely
+    marginTop: 8,
+  },
+  statusButton: {
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    minWidth: 90, // Ensure enough width to center text nicely
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
+  date: {
+    color: '#666',
+    fontSize: 10,
+  },
+});
+
+export default MangaItem;

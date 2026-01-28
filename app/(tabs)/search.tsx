@@ -1,6 +1,6 @@
 /**
  * Search Screen
- * Search for TV shows and movies using TMDB API
+ * Search for TV shows, movies, books, and manga
  */
 
 import { useDebouncedValue } from '@/src/hooks/useDebounce';
@@ -23,9 +23,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { strings } from '@/src/i18n/strings';
 import { getTrendingAll, searchMulti } from '@/src/services/api';
+import { searchBooks } from '@/src/services/api/books';
+import { searchManga } from '@/src/services/api/manga';
 import { getPosterUrl } from '@/src/services/api/client';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
-import { MultiSearchResult } from '@/src/types';
+import { MultiSearchResult, Book, Manga } from '@/src/types';
 
 // App colors
 const Colors = {
@@ -38,50 +40,79 @@ const Colors = {
   border: '#333333',
 };
 
+type SearchType = 'tv_movie' | 'book' | 'manga';
+
 export default function SearchScreen() {
   const router = useRouter();
-  const { getFormattedDate, language } = useSettingsStore();
+  const { getFormattedDate, language, showBooks, showManga } = useSettingsStore();
 
   const t = strings[language] || strings.en;
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState<SearchType>('tv_movie');
   const [showUpcomingOnly, setShowUpcomingOnly] = useState(false);
   const debouncedQuery = useDebouncedValue(searchQuery, 500);
 
-  // Search query
+  const { trackedShows, trackedMovies, trackedBooks, trackedManga } = useWatchlistStore();
+
+  // TMDB Search query
   const {
-    data: searchResults,
-    isLoading: searching,
-    isFetching,
-    refetch: refetchSearch,
+    data: tmdbResults,
+    isLoading: searchingTmdb,
+    isFetching: fetchingTmdb,
   } = useQuery({
-    queryKey: ['search', debouncedQuery, language],
+    queryKey: ['search', 'tmdb', debouncedQuery, language],
     queryFn: () => searchMulti(debouncedQuery),
-    enabled: debouncedQuery.length >= 2,
-    staleTime: 6 * 60 * 60 * 1000, // 6 hours
-    gcTime: 6 * 60 * 60 * 1000,
+    enabled: searchType === 'tv_movie' && debouncedQuery.length >= 2,
+    staleTime: 6 * 60 * 60 * 1000,
   });
 
-  // Trending for empty state
-  const { data: trending, refetch: refetchTrending } = useQuery({
+  // Books Search query
+  const {
+    data: bookResults,
+    isLoading: searchingBooks,
+    isFetching: fetchingBooks,
+  } = useQuery({
+    queryKey: ['search', 'books', debouncedQuery],
+    queryFn: () => searchBooks(debouncedQuery),
+    enabled: searchType === 'book' && debouncedQuery.length >= 2,
+    staleTime: 6 * 60 * 60 * 1000,
+  });
+
+  // Manga Search query
+  const {
+    data: mangaResults,
+    isLoading: searchingManga,
+    isFetching: fetchingManga,
+  } = useQuery({
+    queryKey: ['search', 'manga', debouncedQuery],
+    queryFn: () => searchManga(debouncedQuery),
+    enabled: searchType === 'manga' && debouncedQuery.length >= 2,
+    staleTime: 6 * 60 * 60 * 1000,
+  });
+
+  // Trending for empty state (only for tv_movie for now)
+  const { data: trending } = useQuery({
     queryKey: ['trending', 'all', 'day', language],
     queryFn: () => getTrendingAll('day'),
-    enabled: debouncedQuery.length < 2,
-    staleTime: 6 * 60 * 60 * 1000, // 6 hours
-    gcTime: 6 * 60 * 60 * 1000,
+    enabled: debouncedQuery.length < 2 && searchType === 'tv_movie',
+    staleTime: 6 * 60 * 60 * 1000,
   });
 
-  const { trackedShows, trackedMovies } = useWatchlistStore();
-
-  const getStatusInfo = useCallback((item: MultiSearchResult) => {
+  const getStatusInfo = useCallback((item: MultiSearchResult | Book | Manga) => {
     let status: string | undefined;
     
-    if (item.media_type === 'tv') {
-      const show = trackedShows.find(s => s.showId === item.id);
-      status = show?.status;
-    } else if (item.media_type === 'movie') {
-      const movie = trackedMovies.find(m => m.movieId === item.id);
-      status = movie?.status;
+    // Check if item is tracked
+    if (searchType === 'tv_movie') {
+      const i = item as MultiSearchResult;
+      if (i.media_type === 'tv') status = trackedShows.find(s => s.showId === i.id)?.status;
+      if (i.media_type === 'movie') status = trackedMovies.find(m => m.movieId === i.id)?.status;
+    } else if (searchType === 'book') {
+      const b = item as Book;
+      status = trackedBooks.find(tb => tb.id === b.id)?.status;
+    } else if (searchType === 'manga') {
+      const m = item as Manga;
+      status = trackedManga.find(tm => tm.id === m.id)?.status;
     }
 
     if (!status) return null;
@@ -92,11 +123,11 @@ export default function SearchScreen() {
     switch (status) {
       case 'watching':
         color = '#22c55e';
-        label = t.statusWatching;
+        label = (searchType === 'book' || searchType === 'manga') ? t.reading : t.statusWatching;
         break;
       case 'completed':
         color = '#3b82f6';
-        label = t.statusCompleted;
+        label = (searchType === 'book' || searchType === 'manga') ? t.read : t.statusCompleted;
         break;
       case 'plan_to_watch':
         color = '#f59e0b';
@@ -113,15 +144,21 @@ export default function SearchScreen() {
     }
 
     return { color, label };
-  }, [trackedShows, trackedMovies, t]);
+  }, [trackedShows, trackedMovies, trackedBooks, trackedManga, searchType, t]);
 
-  const navigateToDetails = useCallback((item: MultiSearchResult) => {
-    if (item.media_type === 'tv') {
-      router.push(`/show/${item.id}`);
-    } else if (item.media_type === 'movie') {
-      router.push(`/movie/${item.id}`);
+  const navigateToDetails = useCallback((item: MultiSearchResult | Book | Manga) => {
+    if (searchType === 'tv_movie') {
+      const i = item as MultiSearchResult;
+      if (i.media_type === 'tv') router.push(`/show/${i.id}` as any);
+      else if (i.media_type === 'movie') router.push(`/movie/${i.id}` as any);
+    } else if (searchType === 'book') {
+      const b = item as Book;
+      router.push(`/book/${b.id}` as any);
+    } else if (searchType === 'manga') {
+      const m = item as Manga;
+      router.push(`/manga/${m.id}` as any);
     }
-  }, [router]);
+  }, [router, searchType]);
 
   const clearSearch = () => {
     setSearchQuery('');
@@ -130,6 +167,7 @@ export default function SearchScreen() {
 
   // Helper function to check if item is upcoming
   const isUpcoming = useCallback((item: MultiSearchResult): boolean => {
+    if (searchType !== 'tv_movie') return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -143,34 +181,80 @@ export default function SearchScreen() {
       return releaseDate >= today;
     }
     return false;
-  }, []);
+  }, [searchType]);
 
-  // Filter results
-  const filteredResults = useMemo(() => {
-    let results = searchResults?.results?.filter(
-      (item) => item.media_type === 'tv' || item.media_type === 'movie'
-    ) || [];
-
-    // Apply upcoming filter if enabled
-    if (showUpcomingOnly) {
-      results = results.filter(isUpcoming);
+  // Aggregate results
+  const displayData = useMemo(() => {
+    if (debouncedQuery.length < 2) {
+      return searchType === 'tv_movie' ? (trending?.results || []) : [];
     }
 
-    return results;
-  }, [searchResults?.results, showUpcomingOnly, isUpcoming]);
+    if (searchType === 'tv_movie') {
+      let results = tmdbResults?.results?.filter(
+        (item) => item.media_type === 'tv' || item.media_type === 'movie'
+      ) || [];
+      if (showUpcomingOnly) {
+        results = results.filter(isUpcoming);
+      }
+      return results;
+    } else if (searchType === 'book') {
+      return bookResults || [];
+    } else if (searchType === 'manga') {
+      return mangaResults || [];
+    }
+    return [];
+  }, [debouncedQuery, searchType, tmdbResults, bookResults, mangaResults, trending, showUpcomingOnly, isUpcoming]);
 
-  const displayData = debouncedQuery.length >= 2 
-    ? filteredResults 
-    : trending?.results;
+  const isLoading = useMemo(() => {
+    if (debouncedQuery.length < 2) return false;
+    if (searchType === 'tv_movie') return searchingTmdb || fetchingTmdb;
+    if (searchType === 'book') return searchingBooks || fetchingBooks;
+    if (searchType === 'manga') return searchingManga || fetchingManga;
+    return false;
+  }, [debouncedQuery, searchType, searchingTmdb, fetchingTmdb, searchingBooks, fetchingBooks, searchingManga, fetchingManga]);
 
-  const renderItem = useCallback(({ item }: { item: MultiSearchResult }) => {
-    const upcoming = isUpcoming(item);
-    const dateStr = item.first_air_date || item.release_date;
+  const renderItem = useCallback(({ item }: { item: MultiSearchResult | Book | Manga }) => {
+    let title: string = '';
+    let posterUrl: string | null = null;
+    let overview: string | undefined = '';
+    let dateStr: string | undefined = '';
+    let rating: number | undefined;
+    let badgeText: string | undefined;
+
+    // Type guards/Casting
+    if (searchType === 'tv_movie') {
+      const i = item as MultiSearchResult;
+      title = i.name || i.title || '';
+      posterUrl = getPosterUrl(i.poster_path, 'small');
+      overview = i.overview;
+      dateStr = i.first_air_date || i.release_date;
+      rating = i.vote_average;
+      badgeText = i.media_type === 'tv' ? t.tvBadge : t.movieBadge;
+    } else if (searchType === 'book') {
+      const b = item as Book;
+      title = b.title;
+      posterUrl = b.imageLinks?.thumbnail || null;
+      overview = b.description;
+      dateStr = b.publishedDate;
+      rating = b.averageRating;
+      badgeText = t.bookBadge;
+    } else if (searchType === 'manga') {
+      const m = item as Manga;
+      title = m.title.english || m.title.romaji || m.title.native || '';
+      posterUrl = m.coverImage?.medium || m.coverImage?.large || null;
+      // Strip HTML from description if present (simple regex)
+      overview = m.description?.replace(/<[^>]*>?/gm, '');
+      dateStr = m.startDate?.year ? `${m.startDate.year}` : undefined;
+      rating = m.averageScore ? m.averageScore / 10 : undefined; // Convert 0-100 to 0-10
+      badgeText = t.mangaBadge;
+    }
+
     const date = dateStr ? new Date(dateStr) : null;
     const isFutureDate = date && date >= new Date(new Date().setHours(0, 0, 0, 0));
-    
     const statusInfo = getStatusInfo(item);
-    
+    // Upcoming logic only for TV/Movie
+    const upcoming = searchType === 'tv_movie' && isUpcoming(item as MultiSearchResult);
+
     return (
       <TouchableOpacity
         style={styles.resultItem}
@@ -179,8 +263,7 @@ export default function SearchScreen() {
       >
         <Image
           source={{ 
-            uri: getPosterUrl(item.poster_path, 'small') || 
-                 'https://via.placeholder.com/92x138/1a1a1a/666666?text=No+Image' 
+            uri: posterUrl || 'https://via.placeholder.com/92x138/1a1a1a/666666?text=No+Image' 
           }}
           style={styles.resultPoster}
           resizeMode="cover"
@@ -189,7 +272,7 @@ export default function SearchScreen() {
           <View style={styles.resultHeader}>
             <View style={styles.titleContainer}>
               <Text style={styles.resultTitle} numberOfLines={2}>
-                {item.name || item.title}
+                {title}
               </Text>
               <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
                 {upcoming && (
@@ -204,48 +287,51 @@ export default function SearchScreen() {
                 )}
               </View>
             </View>
-            <View style={styles.mediaTypeBadge}>
-              <Text style={styles.mediaTypeBadgeText}>
-                {item.media_type === 'tv' ? t.tvBadge : t.movieBadge}
-              </Text>
-            </View>
+            {badgeText && (
+               <View style={styles.mediaTypeBadge}>
+                <Text style={styles.mediaTypeBadgeText}>{badgeText}</Text>
+              </View>
+            )}
           </View>
           
-          {dateStr && (
-            <View style={styles.dateContainer}>
-              {isFutureDate ? (
+          <View style={styles.dateContainer}>
+             {isFutureDate && searchType === 'tv_movie' ? (
                 <>
                   <Ionicons name="calendar-outline" size={14} color={Colors.primary} />
                   <Text style={styles.resultDateUpcoming}>
-                    {item.media_type === 'tv' ? t.airDate : t.releaseDate}
+                    {(item as MultiSearchResult).media_type === 'tv' ? t.airDate : t.releaseDate}
                     {getFormattedDate(date)}
                   </Text>
                 </>
-              ) : (
+              ) : (dateStr ? (
                 <Text style={styles.resultYear}>
-                  {date?.getFullYear() || 'TBA'}
+                   {date?.getFullYear() || dateStr}
                 </Text>
-              )}
-            </View>
-          )}
+              ) : null)}
+          </View>
           
           <Text style={styles.resultOverview} numberOfLines={2}>
-            {item.overview || t.noDesc}
+            {overview || t.noDesc}
           </Text>
           
           <View style={styles.resultMeta}>
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={12} color="#FFD700" />
               <Text style={styles.ratingText}>
-                {item.vote_average?.toFixed(1) || 'N/A'}
+                {typeof rating === 'number' ? rating.toFixed(1) : 'N/A'}
               </Text>
             </View>
+             {searchType === 'book' && (item as Book).authors && (
+                <Text style={[styles.ratingText, { marginLeft: 8, color: Colors.textSecondary }]} numberOfLines={1}>
+                  by {(item as Book).authors?.join(', ')}
+                </Text>
+             )}
           </View>
         </View>
         <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
       </TouchableOpacity>
     );
-  }, [navigateToDetails, isUpcoming]);
+  }, [navigateToDetails, isUpcoming, searchType, getStatusInfo, getFormattedDate, t]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -260,7 +346,11 @@ export default function SearchScreen() {
           <Ionicons name="search" size={20} color={Colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder={t.searchPlaceholder}
+            placeholder={
+                searchType === 'tv_movie' ? t.searchPlaceholder :
+                searchType === 'book' ? t.search + ' ' + t.books :
+                t.search + ' ' + t.manga
+            }
             placeholderTextColor={Colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -274,8 +364,34 @@ export default function SearchScreen() {
             </TouchableOpacity>
           )}
         </View>
-        {/* Upcoming Filter Toggle */}
-        {debouncedQuery.length >= 2 && (
+        
+        <View style={styles.tabContainer}>
+            <TouchableOpacity 
+                style={[styles.tab, searchType === 'tv_movie' && styles.tabActive]}
+                onPress={() => setSearchType('tv_movie')}
+            >
+                <Text style={[styles.tabText, searchType === 'tv_movie' && styles.tabTextActive]}>TV & Movies</Text>
+            </TouchableOpacity>
+            {showBooks && (
+            <TouchableOpacity 
+                style={[styles.tab, searchType === 'book' && styles.tabActive]}
+                onPress={() => setSearchType('book')}
+            >
+                <Text style={[styles.tabText, searchType === 'book' && styles.tabTextActive]}>{t.books}</Text>
+            </TouchableOpacity>
+            )}
+            {showManga && (
+             <TouchableOpacity 
+                style={[styles.tab, searchType === 'manga' && styles.tabActive]}
+                onPress={() => setSearchType('manga')}
+            >
+                <Text style={[styles.tabText, searchType === 'manga' && styles.tabTextActive]}>{t.manga}</Text>
+            </TouchableOpacity>
+            )}
+        </View>
+
+        {/* Upcoming Filter Toggle (Only for TV/Movie) */}
+        {debouncedQuery.length >= 2 && searchType === 'tv_movie' && (
           <TouchableOpacity
             style={[styles.filterButton, showUpcomingOnly && styles.filterButtonActive]}
             onPress={() => setShowUpcomingOnly(!showUpcomingOnly)}
@@ -293,21 +409,24 @@ export default function SearchScreen() {
       </View>
 
       {/* Results */}
-      {(searching || isFetching) && debouncedQuery.length >= 2 ? (
+      {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>{t.searching}</Text>
         </View>
       ) : (
-        <FlatList<MultiSearchResult>
-          data={(displayData as MultiSearchResult[]) || []}
-          keyExtractor={(item) => `${item.media_type}-${item.id}`}
+        <FlatList
+          data={displayData as any[]}
+          keyExtractor={(item) => {
+              if (searchType === 'tv_movie') return `${(item as MultiSearchResult).media_type}-${item.id}`;
+              return item.id.toString();
+          }}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
-            debouncedQuery.length < 2 && trending?.results?.length ? (
+            debouncedQuery.length < 2 && searchType === 'tv_movie' && trending?.results?.length ? (
               <Text style={styles.sectionTitle}>{t.trendingToday}</Text>
             ) : null
           }
@@ -326,7 +445,7 @@ export default function SearchScreen() {
               </View>
             ) : (
               <View style={styles.emptyContainer}>
-                <Ionicons name="tv-outline" size={64} color={Colors.textSecondary} />
+                <Ionicons name={searchType === 'book' ? "book-outline" : searchType === 'manga' ? "book-outline" : "tv-outline"} size={64} color={Colors.textSecondary} />
                 <Text style={styles.emptyText}>{t.findFavorites}</Text>
                 <Text style={styles.emptySubtext}>
                   {t.searchTip}
@@ -374,6 +493,31 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 4,
+  },
+  tabContainer: {
+      flexDirection: 'row',
+      marginTop: 12,
+      gap: 10,
+  },
+  tab: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 20,
+      backgroundColor: Colors.surface,
+      borderWidth: 1,
+      borderColor: Colors.border,
+  },
+  tabActive: {
+      backgroundColor: Colors.primary,
+      borderColor: Colors.primary,
+  },
+  tabText: {
+      fontSize: 14,
+      color: Colors.textSecondary,
+      fontWeight: '600',
+  },
+  tabTextActive: {
+      color: Colors.text,
   },
   filterButton: {
     flexDirection: 'row',

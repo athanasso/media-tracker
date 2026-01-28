@@ -205,9 +205,11 @@ export async function syncFromDrive(mode: 'merge' | 'replace'): Promise<void> {
   const latestBackup = backups[0]; // Logic could be improved to sort by modifiedTime
   const data = await downloadBackup(latestBackup.id);
 
+  const { trackedShows, trackedMovies, trackedBooks = [], trackedManga = [] } = data.data;
+
   if (mode === 'merge') {
-    mergeWatchlistData(data.data.trackedShows, data.data.trackedMovies);
+    mergeWatchlistData(trackedShows, trackedMovies, trackedBooks, trackedManga);
   } else {
-    replaceWatchlistData(data.data.trackedShows, data.data.trackedMovies);
+    replaceWatchlistData(trackedShows, trackedMovies, trackedBooks, trackedManga);
   }
 }

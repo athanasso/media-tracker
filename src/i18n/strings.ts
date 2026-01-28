@@ -187,6 +187,8 @@ export const strings = {
     // Settings Extras
     uiSettings: 'UI Settings',
     showDroppedTab: 'Show "Dropped" Tab',
+    showBooksTab: 'Show "Books" Tab',
+    showMangaTab: 'Show "Manga" Tab',
     
     // Details Screen (Show/Movie)
     loadingShow: 'Loading show details...',
@@ -235,8 +237,26 @@ export const strings = {
     movie: 'Movie',
     noItemsInList: 'No items in this list',
     drop: 'Drop',
+    
+    // Books & Manga
+    books: 'Books',
+    manga: 'Manga',
+    progress: 'Progress',
+    chapters: 'Chapters',
+    volumes: 'Volumes',
+    pages: 'Pages',
+    reading: 'Reading',
+    read: 'Read',
+    bookBadge: 'BOOK',
+    mangaBadge: 'MANGA',
+    markRead: 'Mark Read',
+    startReading: 'Start Reading',
+    planToRead: 'Plan to Read',
+    viewOnGoogleBooks: 'View on Google Books',
+    by: 'by',
   },
   el: {
+
     // Settings
     settings: 'Ρυθμίσεις',
     language: 'Γλώσσα',
@@ -424,6 +444,8 @@ export const strings = {
     // Settings Extras
     uiSettings: 'Ρυθμίσεις UI',
     showDroppedTab: 'Προβολή καρτέλας "Διακοπή"',
+    showBooksTab: 'Προβολή καρτέλας "Βιβλία"',
+    showMangaTab: 'Προβολή καρτέλας "Manga"',
 
     // Details Screen
     loadingShow: 'Φόρτωση λεπτομερειών...',
@@ -472,5 +494,22 @@ export const strings = {
     movie: 'Ταινία',
     noItemsInList: 'Δεν υπάρχουν αντικείμενα στη λίστα',
     drop: 'Διακοπή',
+    
+    // Books & Manga
+    books: 'Βιβλία',
+    manga: 'Manga',
+    progress: 'Πρόοδος',
+    chapters: 'Κεφάλαια',
+    volumes: 'Τόμοι',
+    pages: 'Σελίδες',
+    reading: 'Διαβάζω',
+    read: 'Διαβασμένα',
+    bookBadge: 'ΒΙΒΛΙΟ',
+    mangaBadge: 'MANGA',
+    markRead: 'Ολοκλήρωση',
+    startReading: 'Ανάγνωση',
+    planToRead: 'Στα Σχέδια',
+    viewOnGoogleBooks: 'Προβολή στο Google Books',
+    by: 'από',
   }
 };

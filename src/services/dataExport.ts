@@ -9,7 +9,7 @@ import * as Sharing from 'expo-sharing';
 import { Alert } from 'react-native';
 
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
-import { TrackedMovie, TrackedShow } from '@/src/types';
+import { TrackedMovie, TrackedShow, TrackedBook, TrackedManga } from '@/src/types';
 
 // Export file format
 export interface ExportData {
@@ -19,23 +19,27 @@ export interface ExportData {
   data: {
     trackedShows: TrackedShow[];
     trackedMovies: TrackedMovie[];
+    trackedBooks?: TrackedBook[];
+    trackedManga?: TrackedManga[];
   };
   stats: {
     totalShows: number;
     totalMovies: number;
+    totalBooks?: number;
+    totalManga?: number;
     totalWatchedEpisodes: number;
   };
 }
 
 
-const EXPORT_VERSION = '2.0.1';
+const EXPORT_VERSION = '3.0.0';
 const APP_NAME = 'MediaTracker';
 
 /**
  * Generate export data object
  */
 export function generateExportData(): ExportData {
-  const { trackedShows, trackedMovies } = useWatchlistStore.getState();
+  const { trackedShows, trackedMovies, trackedBooks, trackedManga } = useWatchlistStore.getState();
 
   // Calculate stats
   const totalWatchedEpisodes = trackedShows.reduce(
@@ -50,10 +54,14 @@ export function generateExportData(): ExportData {
     data: {
       trackedShows,
       trackedMovies,
+      trackedBooks,
+      trackedManga,
     },
     stats: {
       totalShows: trackedShows.length,
       totalMovies: trackedMovies.length,
+      totalBooks: trackedBooks.length,
+      totalManga: trackedManga.length,
       totalWatchedEpisodes,
     },
   };
@@ -135,7 +143,7 @@ export async function importWatchlistData(): Promise<boolean> {
     }
 
     // Show confirmation with stats
-    const { trackedShows, trackedMovies } = importedData.data;
+    const { trackedShows, trackedMovies, trackedBooks = [], trackedManga = [] } = importedData.data;
 
     return new Promise((resolve) => {
       Alert.alert(
@@ -143,6 +151,8 @@ export async function importWatchlistData(): Promise<boolean> {
         `This backup contains:\n\n` +
           `• ${trackedShows.length} TV Shows\n` +
           `• ${trackedMovies.length} Movies\n` +
+          (trackedBooks.length > 0 ? `• ${trackedBooks.length} Books\n` : '') +
+          (trackedManga.length > 0 ? `• ${trackedManga.length} Manga\n` : '') +
           `• ${importedData.stats?.totalWatchedEpisodes || 0} Watched Episodes\n\n` +
           `Exported on: ${useSettingsStore.getState().getFormattedDate(importedData.exportedAt)}\n\n` +
           `Choose import mode:`,
@@ -155,7 +165,7 @@ export async function importWatchlistData(): Promise<boolean> {
           {
             text: 'Merge',
             onPress: () => {
-              mergeWatchlistData(trackedShows, trackedMovies);
+              mergeWatchlistData(trackedShows, trackedMovies, trackedBooks, trackedManga);
               Alert.alert('Success', 'Watchlist data merged successfully!');
               resolve(true);
             },
@@ -164,7 +174,7 @@ export async function importWatchlistData(): Promise<boolean> {
             text: 'Replace All',
             style: 'destructive',
             onPress: () => {
-              replaceWatchlistData(trackedShows, trackedMovies);
+              replaceWatchlistData(trackedShows, trackedMovies, trackedBooks, trackedManga);
               Alert.alert('Success', 'Watchlist data imported successfully!');
               resolve(true);
             },
@@ -184,10 +194,12 @@ export async function importWatchlistData(): Promise<boolean> {
  */
 export function mergeWatchlistData(
   importedShows: TrackedShow[],
-  importedMovies: TrackedMovie[]
+  importedMovies: TrackedMovie[],
+  importedBooks: TrackedBook[],
+  importedManga: TrackedManga[]
 ): void {
   const store = useWatchlistStore.getState();
-  const { trackedShows, trackedMovies } = store;
+  const { trackedShows, trackedMovies, trackedBooks, trackedManga } = store;
 
   // Merge shows (avoid duplicates based on showId)
   const existingShowIds = new Set(trackedShows.map((s) => s.showId));
@@ -197,10 +209,20 @@ export function mergeWatchlistData(
   const existingMovieIds = new Set(trackedMovies.map((m) => m.movieId));
   const newMovies = importedMovies.filter((m) => !existingMovieIds.has(m.movieId));
 
+  // Merge books
+  const existingBookIds = new Set(trackedBooks.map((b) => b.id));
+  const newBooks = importedBooks.filter((b) => !existingBookIds.has(b.id));
+
+  // Merge manga
+  const existingMangaIds = new Set(trackedManga.map((m) => m.id));
+  const newManga = importedManga.filter((m) => !existingMangaIds.has(m.id));
+
   // Update store
   useWatchlistStore.setState({
     trackedShows: [...trackedShows, ...newShows],
     trackedMovies: [...trackedMovies, ...newMovies],
+    trackedBooks: [...trackedBooks, ...newBooks],
+    trackedManga: [...trackedManga, ...newManga],
   });
 }
 
@@ -209,11 +231,15 @@ export function mergeWatchlistData(
  */
 export function replaceWatchlistData(
   importedShows: TrackedShow[],
-  importedMovies: TrackedMovie[]
+  importedMovies: TrackedMovie[],
+  importedBooks: TrackedBook[],
+  importedManga: TrackedManga[]
 ): void {
   useWatchlistStore.setState({
     trackedShows: importedShows,
     trackedMovies: importedMovies,
+    trackedBooks: importedBooks,
+    trackedManga: importedManga,
   });
 }
 
@@ -223,13 +249,17 @@ export function replaceWatchlistData(
 export function getExportPreview(): {
   showCount: number;
   movieCount: number;
+  bookCount: number;
+  mangaCount: number;
   episodeCount: number;
 } {
-  const { trackedShows, trackedMovies } = useWatchlistStore.getState();
+  const { trackedShows, trackedMovies, trackedBooks, trackedManga } = useWatchlistStore.getState();
 
   return {
     showCount: trackedShows.length,
     movieCount: trackedMovies.length,
+    bookCount: trackedBooks.length,
+    mangaCount: trackedManga.length,
     episodeCount: trackedShows.reduce(
       (acc, show) => acc + show.watchedEpisodes.length,
       0

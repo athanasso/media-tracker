@@ -292,13 +292,95 @@ export type TrackingStatus =
   | 'dropped';
 
 // ============================================
+// BOOK INTERFACES (Google Books)
+// ============================================
+
+export interface Book {
+  id: string;
+  title: string;
+  authors: string[];
+  description: string;
+  pageCount: number;
+  publishedDate: string;
+  publisher: string;
+  imageLinks: {
+    thumbnail: string | null;
+    smallThumbnail: string | null;
+  } | null;
+  averageRating?: number;
+  ratingsCount?: number;
+  categories?: string[];
+  language?: string;
+  infoLink?: string;
+}
+
+export interface TrackedBook {
+  id: string;
+  title: string;
+  authors: string[];
+  coverUrl: string | null;
+  addedAt: string;
+  status: TrackingStatus;
+  currentPage: number;
+  totalPages: number;
+  rating?: number;
+  isFavorite?: boolean;
+}
+
+// ============================================
+// MANGA INTERFACES (Anilist)
+// ============================================
+
+export interface Manga {
+  id: number;
+  title: {
+    romaji: string;
+    english: string | null;
+    native: string | null;
+  };
+  description: string;
+  coverImage: {
+    large: string;
+    medium: string;
+    color: string | null;
+  };
+  bannerImage: string | null;
+  startDate: {
+    year: number;
+    month: number;
+    day: number;
+  };
+  status: 'FINISHED' | 'RELEASING' | 'NOT_YET_RELEASED' | 'CANCELLED' | 'HIATUS';
+  chapters: number | null;
+  volumes: number | null;
+  averageScore: number;
+  popularity: number;
+  genres: string[];
+  format: 'MANGA' | 'NOVEL' | 'ONE_SHOT';
+}
+
+export interface TrackedManga {
+  id: number;
+  title: string;
+  coverUrl: string | null;
+  addedAt: string;
+  status: TrackingStatus;
+  currentChapter: number;
+  totalChapters: number; // 0 if unknown
+  currentVolume: number;
+  totalVolumes: number; // 0 if unknown
+  rating?: number;
+  isFavorite?: boolean;
+}
+
+// ============================================
 // MEDIA UNION TYPES
 // ============================================
 
-export type MediaType = 'tv' | 'movie';
+export type MediaType = 'tv' | 'movie' | 'book' | 'manga';
 
-export type MediaItem = Show | Movie;
-export type MediaListItem = ShowListItem | MovieListItem;
+export type MediaItem = Show | Movie | Book | Manga;
+export type MediaListItem = ShowListItem | MovieListItem | Book | Manga;
 
 export interface TrendingItem {
   id: number;

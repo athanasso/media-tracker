@@ -4,18 +4,21 @@
 
 import { getMovieDetails, getShowDetails } from '@/src/services/api';
 import { useNotificationStore, useSettingsStore, useWatchlistStore } from '@/src/store';
-import { TrackedMovie, TrackedShow, TrackingStatus } from '@/src/types';
+import { TrackedMovie, TrackedShow, TrackedBook, TrackedManga, TrackingStatus } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueries } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import { FlashList } from '@shopify/flash-list';
+
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BookItem from '../components/BookItem';
+import MangaItem from '../components/MangaItem';
 import MovieItem from '../components/MovieItem';
 import ShowItem from '../components/ShowItem';
 import UpcomingShowItem from '../components/UpcomingShowItem';
+import { strings } from '@/src/i18n/strings';
 
 const Colors = {
   primary: '#E50914',
@@ -27,38 +30,47 @@ const Colors = {
   success: '#22c55e',
 };
 
-import { strings } from '@/src/i18n/strings';
-
 type SortOption = 'name' | 'date' | 'status' | 'added';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'shows' | 'movies' | 'plan' | 'favorites'>('shows');
-  const [showsSubTab, setShowsSubTab] = useState<'watched' | 'in_progress' | 'upcoming' | 'dropped'>('in_progress');
+  const [activeTab, setActiveTab] = useState<'shows' | 'movies' | 'books' | 'manga' | 'plan' | 'favorites'>('shows');
+  const [showsSubTab, setShowsSubTab] = useState<'watched' | 'in_progress' | 'upcoming' | 'dropped'>('watched');
   const [moviesSubTab, setMoviesSubTab] = useState<'watched' | 'upcoming'>('watched');
+  const [booksSubTab, setBooksSubTab] = useState<'read' | 'reading' | 'plan_to_read' | 'dropped'>('reading');
+  const [mangaSubTab, setMangaSubTab] = useState<'read' | 'reading' | 'plan_to_read' | 'dropped'>('reading');
 
-  const [planSubTab, setPlanSubTab] = useState<'shows' | 'movies' | 'all'>('all');
-  const [favoritesSubTab, setFavoritesSubTab] = useState<'shows' | 'movies' | 'all'>('all');
+  const [planSubTab, setPlanSubTab] = useState<'shows' | 'movies' | 'books' | 'manga' | 'all'>('all');
+  const [favoritesSubTab, setFavoritesSubTab] = useState<'shows' | 'movies' | 'books' | 'manga' | 'all'>('all');
   
   // Search and sort states
   const [showsSearch, setShowsSearch] = useState('');
   const [moviesSearch, setMoviesSearch] = useState('');
+  const [booksSearch, setBooksSearch] = useState('');
+  const [mangaSearch, setMangaSearch] = useState('');
   const [planSearch, setPlanSearch] = useState('');
   const [favoritesSearch, setFavoritesSearch] = useState('');
+  
   const [showsSort, setShowsSort] = useState<SortOption>('added');
   const [moviesSort, setMoviesSort] = useState<SortOption>('added');
+  const [booksSort, setBooksSort] = useState<SortOption>('added');
+  const [mangaSort, setMangaSort] = useState<SortOption>('added');
   const [planSort, setPlanSort] = useState<SortOption>('added');
   const [favoritesSort, setFavoritesSort] = useState<SortOption>('added');
-  const [showSortMenu, setShowSortMenu] = useState<'shows' | 'movies' | 'plan' | 'favorites' | null>(null);
+  const [showSortMenu, setShowSortMenu] = useState<'shows' | 'movies' | 'books' | 'manga' | 'plan' | 'favorites' | null>(null);
 
-  const { trackedShows, trackedMovies, removeShow, removeMovie, getWatchedEpisodesCount, updateShowStatus, updateMovieStatus } = useWatchlistStore();
+  const { 
+    trackedShows, trackedMovies, trackedBooks, trackedManga,
+    removeShow, removeMovie, removeBook, removeManga,
+    getWatchedEpisodesCount, updateShowStatus, updateMovieStatus, updateBookStatus, updateBookProgress, updateMangaStatus, updateMangaProgress
+  } = useWatchlistStore();
   const { 
     addNotification, 
     removeNotification, 
     hasNotification, 
     getNotificationPreference 
   } = useNotificationStore();
-  const { getFormattedDate, language } = useSettingsStore();
+  const { getFormattedDate, language, showBooks, showManga } = useSettingsStore();
 
   const { showDroppedTab } = useSettingsStore();
   const t = strings[language] || strings.en;
@@ -148,7 +160,7 @@ export default function ProfileScreen() {
     return colors[status] || Colors.textSecondary;
   };
 
-  const handleStatusChange = (id: number, type: 'show' | 'movie', currentStatus: TrackingStatus) => {
+  const handleStatusChange = (id: number | string, type: 'show' | 'movie' | 'book' | 'manga', currentStatus: TrackingStatus) => {
     const statusOptions: TrackingStatus[] = ['watching', 'completed', 'plan_to_watch', 'on_hold', 'dropped'];
 
     Alert.alert(
@@ -158,27 +170,27 @@ export default function ProfileScreen() {
         ...statusOptions.map(status => {
           let label = '';
           switch (status) {
-            case 'watching': label = t.statusWatching; break;
-            case 'completed': label = t.statusCompleted; break;
-            case 'plan_to_watch': label = t.statusPlanToWatch; break;
+            case 'watching': label = type === 'book' || type === 'manga' ? t.reading : t.statusWatching; break;
+            case 'completed': label = type === 'book' || type === 'manga' ? t.read : t.statusCompleted; break;
+            case 'plan_to_watch': label = type === 'book' || type === 'manga' ? t.planToRead : t.statusPlanToWatch; break;
             case 'on_hold': label = t.statusOnHold; break;
             case 'dropped': label = t.statusDropped; break;
           }
           
           return {
             text: label,
-          onPress: () => {
-            if (type === 'show') {
-              updateShowStatus(id, status);
-            } else {
-              updateMovieStatus(id, status);
-            }
-          },
-          style: status === currentStatus ? 'cancel' : 'default' as any,
-        };
+            onPress: () => {
+              if (type === 'show') updateShowStatus(id as number, status);
+              else if (type === 'movie') updateMovieStatus(id as number, status);
+              else if (type === 'book') updateBookStatus(id as string, status);
+              else if (type === 'manga') updateMangaStatus(id as number, status);
+            },
+            style: status === currentStatus ? 'cancel' : 'default' as any,
+          };
         }),
         { text: t.cancel, style: 'cancel' as any },
-      ]
+      ],
+      { cancelable: true }
     );
   };
 
@@ -264,7 +276,7 @@ export default function ProfileScreen() {
   };
 
   // Filter and sort functions
-  const filterAndSort = <T extends TrackedShow | TrackedMovie>(
+  const filterAndSort = <T extends TrackedShow | TrackedMovie | TrackedBook | TrackedManga>(
     items: T[],
     search: string,
     sort: SortOption,
@@ -406,48 +418,87 @@ export default function ProfileScreen() {
     return filterAndSort(movies, moviesSearch, moviesSort, (m) => m.movieTitle);
   }, [trackedMovies, moviesSubTab, movieDetailsQueries.data, planToWatchMovies, moviesSearch, moviesSort]);
 
-  // Get filtered and sorted plan to watch items
-  const filteredPlanItems = useMemo(() => {
-    type PlanItem = (TrackedShow & { type: 'show' }) | (TrackedMovie & { type: 'movie' });
-    let items: PlanItem[] = [];
+  // Get filtered and sorted books
+  const filteredBooks = useMemo(() => {
+    let books: TrackedBook[] = [];
 
-    if (planSubTab === 'shows') {
-      items = planToWatchShows.map(s => ({ ...s, type: 'show' as const }));
-    } else if (planSubTab === 'movies') {
-      items = planToWatchMovies.map(m => ({ ...m, type: 'movie' as const }));
-    } else {
-      items = [
-        ...planToWatchShows.map(s => ({ ...s, type: 'show' as const })),
-        ...planToWatchMovies.map(m => ({ ...m, type: 'movie' as const }))
-      ];
+    if (booksSubTab === 'reading') {
+      books = trackedBooks.filter(b => b.status === 'watching'); // Reuse 'watching' as 'reading'
+    } else if (booksSubTab === 'read') {
+      books = trackedBooks.filter(b => b.status === 'completed');
+    } else if (booksSubTab === 'plan_to_read') {
+      books = trackedBooks.filter(b => b.status === 'plan_to_watch');
+    } else if (booksSubTab === 'dropped') {
+      books = trackedBooks.filter(b => b.status === 'dropped');
     }
 
-    // Remove duplicates based on type and id
-    const seen = new Set<string>();
-    items = items.filter(item => {
-      const key = item.type === 'show' ? `show-${item.showId}` : `movie-${item.movieId}`;
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
+    return filterAndSort(books, booksSearch, booksSort, (b) => b.title);
+  }, [trackedBooks, booksSubTab, booksSearch, booksSort]);
+
+  // Get filtered and sorted manga
+  const filteredManga = useMemo(() => {
+    let manga: TrackedManga[] = [];
+
+    if (mangaSubTab === 'reading') {
+      manga = trackedManga.filter(m => m.status === 'watching'); // Reuse 'watching' as 'reading'
+    } else if (mangaSubTab === 'read') {
+      manga = trackedManga.filter(m => m.status === 'completed');
+    } else if (mangaSubTab === 'plan_to_read') {
+      manga = trackedManga.filter(m => m.status === 'plan_to_watch');
+    } else if (mangaSubTab === 'dropped') {
+      manga = trackedManga.filter(m => m.status === 'dropped');
+    }
+
+    return filterAndSort(manga, mangaSearch, mangaSort, (m) => m.title);
+  }, [trackedManga, mangaSubTab, mangaSearch, mangaSort]);
+
+  // Get filtered and sorted plan to watch items
+  const filteredPlanItems = useMemo(() => {
+    type PlanItem = (TrackedShow & { type: 'show' }) | (TrackedMovie & { type: 'movie' }) | (TrackedBook & { type: 'book' }) | (TrackedManga & { type: 'manga' });
+    let items: PlanItem[] = [];
+
+    const planShows = trackedShows.filter(s => s.status === 'plan_to_watch');
+    const planMovies = trackedMovies.filter(m => m.status === 'plan_to_watch');
+    const planBooks = trackedBooks.filter(b => b.status === 'plan_to_watch');
+    const planManga = trackedManga.filter(m => m.status === 'plan_to_watch');
+
+    if (planSubTab === 'shows') {
+      items = planShows.map(s => ({ ...s, type: 'show' as const }));
+    } else if (planSubTab === 'movies') {
+      items = planMovies.map(m => ({ ...m, type: 'movie' as const }));
+    } else if (planSubTab === 'books') {
+      items = planBooks.map(b => ({ ...b, type: 'book' as const }));
+    } else if (planSubTab === 'manga') {
+      items = planManga.map(m => ({ ...m, type: 'manga' as const }));
+    } else {
+      items = [
+        ...planShows.map(s => ({ ...s, type: 'show' as const })),
+        ...planMovies.map(m => ({ ...m, type: 'movie' as const })),
+        ...planBooks.map(b => ({ ...b, type: 'book' as const })),
+        ...planManga.map(m => ({ ...m, type: 'manga' as const }))
+      ];
+    }
 
     // Filter by search
     if (planSearch.trim()) {
       const searchLower = planSearch.toLowerCase();
       items = items.filter(item => {
-        if (item.type === 'show') {
-          return item.showName.toLowerCase().includes(searchLower);
-        } else {
-          return item.movieTitle.toLowerCase().includes(searchLower);
-        }
+        if (item.type === 'show') return item.showName.toLowerCase().includes(searchLower);
+        if (item.type === 'movie') return item.movieTitle.toLowerCase().includes(searchLower);
+        if (item.type === 'book') return item.title.toLowerCase().includes(searchLower);
+        if (item.type === 'manga') return item.title.toLowerCase().includes(searchLower);
+        return false;
       });
     }
 
     // Sort
     const sorted = [...items].sort((a, b) => {
-      const getTitle = (item: typeof items[0]) => item.type === 'show' ? item.showName : item.movieTitle;
+      const getTitle = (item: typeof items[0]) => {
+         if (item.type === 'show') return item.showName;
+         if (item.type === 'movie') return item.movieTitle;
+         return item.title;
+      };
+
       switch (planSort) {
         case 'name':
           return getTitle(a).localeCompare(getTitle(b));
@@ -463,21 +514,32 @@ export default function ProfileScreen() {
     });
 
     return sorted;
-  }, [planToWatchShows, planToWatchMovies, planSubTab, planSearch, planSort]);
+  }, [trackedShows, trackedMovies, trackedBooks, trackedManga, planSubTab, planSearch, planSort]);
 
   // Get filtered and sorted favorite items
   const filteredFavorites = useMemo(() => {
-    type FavoriteItem = (TrackedShow & { type: 'show' }) | (TrackedMovie & { type: 'movie' });
+    type FavoriteItem = (TrackedShow & { type: 'show' }) | (TrackedMovie & { type: 'movie' }) | (TrackedBook & { type: 'book' }) | (TrackedManga & { type: 'manga' });
     let items: FavoriteItem[] = [];
 
+    const favShows = trackedShows.filter(s => s.isFavorite);
+    const favMovies = trackedMovies.filter(m => m.isFavorite);
+    const favBooks = trackedBooks.filter(b => b.isFavorite);
+    const favManga = trackedManga.filter(m => m.isFavorite);
+
     if (favoritesSubTab === 'shows') {
-      items = favoriteShows.map(s => ({ ...s, type: 'show' as const }));
+      items = favShows.map(s => ({ ...s, type: 'show' as const }));
     } else if (favoritesSubTab === 'movies') {
-      items = favoriteMovies.map(m => ({ ...m, type: 'movie' as const }));
+      items = favMovies.map(m => ({ ...m, type: 'movie' as const }));
+    } else if (favoritesSubTab === 'books') {
+      items = favBooks.map(b => ({ ...b, type: 'book' as const }));
+    } else if (favoritesSubTab === 'manga') {
+      items = favManga.map(m => ({ ...m, type: 'manga' as const }));
     } else {
       items = [
-        ...favoriteShows.map(s => ({ ...s, type: 'show' as const })),
-        ...favoriteMovies.map(m => ({ ...m, type: 'movie' as const }))
+        ...favShows.map(s => ({ ...s, type: 'show' as const })),
+        ...favMovies.map(m => ({ ...m, type: 'movie' as const })),
+        ...favBooks.map(b => ({ ...b, type: 'book' as const })),
+        ...favManga.map(m => ({ ...m, type: 'manga' as const }))
       ];
     }
 
@@ -485,17 +547,22 @@ export default function ProfileScreen() {
     if (favoritesSearch.trim()) {
       const searchLower = favoritesSearch.toLowerCase();
       items = items.filter(item => {
-        if (item.type === 'show') {
-          return item.showName.toLowerCase().includes(searchLower);
-        } else {
-          return item.movieTitle.toLowerCase().includes(searchLower);
-        }
+        if (item.type === 'show') return item.showName.toLowerCase().includes(searchLower);
+        if (item.type === 'movie') return item.movieTitle.toLowerCase().includes(searchLower);
+        if (item.type === 'book') return item.title.toLowerCase().includes(searchLower);
+        if (item.type === 'manga') return item.title.toLowerCase().includes(searchLower);
+        return false;
       });
     }
 
-    // Sort
+     // Sort
     const sorted = [...items].sort((a, b) => {
-      const getTitle = (item: typeof items[0]) => item.type === 'show' ? item.showName : item.movieTitle;
+      const getTitle = (item: typeof items[0]) => {
+         if (item.type === 'show') return item.showName;
+         if (item.type === 'movie') return item.movieTitle;
+         return item.title;
+      };
+      
       switch (favoritesSort) {
         case 'name':
           return getTitle(a).localeCompare(getTitle(b));
@@ -511,7 +578,7 @@ export default function ProfileScreen() {
     });
 
     return sorted;
-  }, [favoriteShows, favoriteMovies, favoritesSubTab, favoritesSearch, favoritesSort]);
+  }, [trackedShows, trackedMovies, trackedBooks, trackedManga, favoritesSubTab, favoritesSearch, favoritesSort]);
 
   // Render callbacks
   const renderShowItem = useCallback(({ item }: { item: TrackedShow & { airDate?: string } }) => (
@@ -557,8 +624,36 @@ export default function ProfileScreen() {
     />
   ), [activeTab, moviesSubTab, hasNotification, getNotificationPreference, getStatusColor, getFormattedDate, t, handleStatusChange, handleNotificationPress, removeMovie]);
 
+  const renderBookItem = useCallback(({ item }: { item: TrackedBook }) => (
+    <BookItem 
+      item={item}
+      activeTab={activeTab}
+      booksSubTab={booksSubTab}
+      getStatusColor={getStatusColor}
+      getFormattedDate={getFormattedDate}
+      t={t}
+      onStatusChange={(id, status) => handleStatusChange(id, 'book', status)}
+      onRemove={removeBook}
+      onUpdateProgress={(id, page) => updateBookProgress(id, page)}
+    />
+  ), [activeTab, booksSubTab, getStatusColor, getFormattedDate, t, handleStatusChange, removeBook]);
 
-  const renderSortMenu = (type: 'shows' | 'movies' | 'plan' | 'favorites') => {
+  const renderMangaItem = useCallback(({ item }: { item: TrackedManga }) => (
+    <MangaItem 
+      item={item}
+      activeTab={activeTab}
+      mangaSubTab={mangaSubTab} // Fix: was using non-existent activeTab
+      getStatusColor={getStatusColor}
+      getFormattedDate={getFormattedDate}
+      t={t}
+      onStatusChange={(id, status) => handleStatusChange(id, 'manga', status)}
+      onRemove={removeManga}
+      onUpdateProgress={(id, chapter, volume) => updateMangaProgress(id, chapter, volume)}
+    />
+  ), [activeTab, mangaSubTab, getStatusColor, getFormattedDate, t, handleStatusChange, removeManga]);
+
+
+  const renderSortMenu = (type: 'shows' | 'movies' | 'books' | 'manga' | 'plan' | 'favorites') => {
     if (showSortMenu !== type) return null;
 
     const currentSort = type === 'shows' ? showsSort : type === 'movies' ? moviesSort : type === 'plan' ? planSort : favoritesSort;
@@ -596,37 +691,12 @@ export default function ProfileScreen() {
   };
 
   /* Header Content for FlashList */
-  const headerContent = (
+  const headerContent = useMemo(() => (
     <View>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t.profile}</Text>
         <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/settings')}>
           <Ionicons name="settings-outline" size={24} color={Colors.text} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Stats Cards */}
-      <View style={styles.statsContainer}>
-        <TouchableOpacity 
-          style={styles.statCard}
-          onPress={() => router.push({ pathname: '/stats', params: { type: 'shows' } })}
-        >
-          <Text style={styles.statNumber}>{trackedShows.length}</Text>
-          <Text style={styles.statLabel}>{t.shows}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.statCard}
-          onPress={() => router.push({ pathname: '/stats', params: { type: 'movies' } })}
-        >
-          <Text style={styles.statNumber}>{trackedMovies.length}</Text>
-          <Text style={styles.statLabel}>{t.movies}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.statCard}
-          onPress={() => router.push({ pathname: '/stats', params: { type: 'episodes' } })}
-        >
-          <Text style={styles.statNumber}>{totalWatchedEpisodes}</Text>
-          <Text style={styles.statLabel}>{t.episodes}</Text>
         </TouchableOpacity>
       </View>
 
@@ -646,6 +716,26 @@ export default function ProfileScreen() {
             <Text style={[styles.tabText, activeTab === 'movies' && styles.activeTabText]}>{t.movies}</Text>
           </TouchableOpacity>
         </View>
+        {(showBooks || showManga) && (
+          <View style={styles.tabRow}>
+            {showBooks && (
+              <TouchableOpacity 
+                style={[styles.tab, activeTab === 'books' && styles.activeTab]} 
+                onPress={() => setActiveTab('books')}
+              >
+                <Text style={[styles.tabText, activeTab === 'books' && styles.activeTabText]}>{t.books}</Text>
+              </TouchableOpacity>
+            )}
+            {showManga && (
+              <TouchableOpacity 
+                style={[styles.tab, activeTab === 'manga' && styles.activeTab]} 
+                onPress={() => setActiveTab('manga')}
+              >
+                <Text style={[styles.tabText, activeTab === 'manga' && styles.activeTabText]}>{t.manga}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
         <View style={styles.tabRow}>
           <TouchableOpacity 
             style={[styles.tab, activeTab === 'plan' && styles.activeTab]} 
@@ -670,12 +760,12 @@ export default function ProfileScreen() {
             style={styles.searchInput}
             placeholder={t.search}
             placeholderTextColor={Colors.textSecondary}
-            value={activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : activeTab === 'plan' ? planSearch : favoritesSearch}
-            onChangeText={activeTab === 'shows' ? setShowsSearch : activeTab === 'movies' ? setMoviesSearch : activeTab === 'plan' ? setPlanSearch : setFavoritesSearch}
+            value={activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : activeTab === 'books' ? booksSearch : activeTab === 'manga' ? mangaSearch : activeTab === 'plan' ? planSearch : favoritesSearch}
+            onChangeText={activeTab === 'shows' ? setShowsSearch : activeTab === 'movies' ? setMoviesSearch : activeTab === 'books' ? setBooksSearch : activeTab === 'manga' ? setMangaSearch : activeTab === 'plan' ? setPlanSearch : setFavoritesSearch}
             autoCorrect={false}
           />
-          {(activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : activeTab === 'plan' ? planSearch : favoritesSearch) ? (
-            <TouchableOpacity onPress={() => activeTab === 'shows' ? setShowsSearch('') : activeTab === 'movies' ? setMoviesSearch('') : activeTab === 'plan' ? setPlanSearch('') : setFavoritesSearch('')}>
+          {(activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : activeTab === 'books' ? booksSearch : activeTab === 'manga' ? mangaSearch : activeTab === 'plan' ? planSearch : favoritesSearch) ? (
+            <TouchableOpacity onPress={() => activeTab === 'shows' ? setShowsSearch('') : activeTab === 'movies' ? setMoviesSearch('') : activeTab === 'books' ? setBooksSearch('') : activeTab === 'manga' ? setMangaSearch('') : activeTab === 'plan' ? setPlanSearch('') : setFavoritesSearch('')}>
               <Ionicons name="close-circle" size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
           ) : null}
@@ -738,6 +828,69 @@ export default function ProfileScreen() {
         </View>
       )}
 
+      {activeTab === 'books' && (
+        <View style={styles.subTabContainer}>
+          <TouchableOpacity 
+            style={[styles.subTab, booksSubTab === 'reading' && styles.activeSubTab]} 
+            onPress={() => setBooksSubTab('reading')}
+          >
+            <Text style={[styles.subTabText, booksSubTab === 'reading' && styles.activeSubTabText]}>{t.reading}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, booksSubTab === 'read' && styles.activeSubTab]} 
+            onPress={() => setBooksSubTab('read')}
+          >
+            <Text style={[styles.subTabText, booksSubTab === 'read' && styles.activeSubTabText]}>{t.read}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, booksSubTab === 'plan_to_read' && styles.activeSubTab]} 
+            onPress={() => setBooksSubTab('plan_to_read')}
+          >
+            <Text style={[styles.subTabText, booksSubTab === 'plan_to_read' && styles.activeSubTabText]}>{t.planToRead}</Text>
+          </TouchableOpacity>
+           {showDroppedTab && (
+            <TouchableOpacity 
+              style={[styles.subTab, booksSubTab === 'dropped' && styles.activeSubTab]} 
+              onPress={() => setBooksSubTab('dropped')}
+            >
+              <Text style={[styles.subTabText, booksSubTab === 'dropped' && styles.activeSubTabText]}>{t.statusDropped}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {activeTab === 'manga' && (
+        <View style={styles.subTabContainer}>
+          <TouchableOpacity 
+            style={[styles.subTab, mangaSubTab === 'reading' && styles.activeSubTab]} 
+            onPress={() => setMangaSubTab('reading')}
+          >
+            <Text style={[styles.subTabText, mangaSubTab === 'reading' && styles.activeSubTabText]}>{t.reading}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, mangaSubTab === 'read' && styles.activeSubTab]} 
+            onPress={() => setMangaSubTab('read')}
+          >
+            <Text style={[styles.subTabText, mangaSubTab === 'read' && styles.activeSubTabText]}>{t.read}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, mangaSubTab === 'plan_to_read' && styles.activeSubTab]} 
+            onPress={() => setMangaSubTab('plan_to_read')}
+          >
+            <Text style={[styles.subTabText, mangaSubTab === 'plan_to_read' && styles.activeSubTabText]}>{t.planToRead}</Text>
+          </TouchableOpacity>
+           {showDroppedTab && (
+            <TouchableOpacity 
+              style={[styles.subTab, mangaSubTab === 'dropped' && styles.activeSubTab]} 
+              onPress={() => setMangaSubTab('dropped')}
+            >
+              <Text style={[styles.subTabText, mangaSubTab === 'dropped' && styles.activeSubTabText]}>{t.statusDropped}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+
       {activeTab === 'favorites' && (
         <View style={styles.subTabContainer}>
             <TouchableOpacity 
@@ -757,6 +910,18 @@ export default function ProfileScreen() {
             onPress={() => setFavoritesSubTab('movies')}
           >
             <Text style={[styles.subTabText, favoritesSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, favoritesSubTab === 'books' && styles.activeSubTab]} 
+            onPress={() => setFavoritesSubTab('books')}
+          >
+            <Text style={[styles.subTabText, favoritesSubTab === 'books' && styles.activeSubTabText]}>{t.books}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, favoritesSubTab === 'manga' && styles.activeSubTab]} 
+            onPress={() => setFavoritesSubTab('manga')}
+          >
+            <Text style={[styles.subTabText, favoritesSubTab === 'manga' && styles.activeSubTabText]}>{t.manga}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -781,25 +946,45 @@ export default function ProfileScreen() {
           >
             <Text style={[styles.subTabText, planSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
           </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, planSubTab === 'books' && styles.activeSubTab]} 
+            onPress={() => setPlanSubTab('books')}
+          >
+            <Text style={[styles.subTabText, planSubTab === 'books' && styles.activeSubTabText]}>{t.books}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, planSubTab === 'manga' && styles.activeSubTab]} 
+            onPress={() => setPlanSubTab('manga')}
+          >
+            <Text style={[styles.subTabText, planSubTab === 'manga' && styles.activeSubTabText]}>{t.manga}</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
-  );
+  ), [
+    activeTab, 
+    showsSubTab, moviesSubTab, booksSubTab, mangaSubTab, favoritesSubTab, planSubTab,
+    showsSearch, moviesSearch, booksSearch, mangaSearch, planSearch, favoritesSearch,
+    showSortMenu, showsSort, moviesSort, booksSort, mangaSort, planSort, favoritesSort,
+    showBooks, showManga, showDroppedTab,
+    t
+  ]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={{ paddingHorizontal: 16 }}>
+        {headerContent}
+      </View>
+      
       {activeTab === 'shows' ? (
-        <FlashList
+        <FlatList
           data={filteredShows}
-          ListHeaderComponent={headerContent}
           keyExtractor={(item) => item.showId.toString()}
-          renderItem={(props) => showsSubTab === 'upcoming' 
-            ? renderUpcomingShowItem(props as any) 
-            : renderShowItem(props)
+          renderItem={({ item }) => showsSubTab === 'upcoming' 
+            ? renderUpcomingShowItem({ item: item as any }) 
+            : renderShowItem({ item })
           }
           contentContainerStyle={styles.listContent}
-          // @ts-ignore
-          estimatedItemSize={126}
           style={{ flex: 1 }}
           ListEmptyComponent={
             (showsSubTab === 'upcoming' && showDetailsQueries.isLoading) ? (
@@ -820,14 +1005,11 @@ export default function ProfileScreen() {
           }
         />
       ) : activeTab === 'movies' ? (
-        <FlashList
+        <FlatList
           data={filteredMovies}
-          ListHeaderComponent={headerContent}
           keyExtractor={(item) => item.movieId.toString()}
           renderItem={renderMovieItem}
           contentContainerStyle={styles.listContent}
-          // @ts-ignore
-          estimatedItemSize={126}
           style={{ flex: 1 }}
           ListEmptyComponent={
             (moviesSubTab === 'upcoming' && movieDetailsQueries.isLoading) ? (
@@ -846,19 +1028,54 @@ export default function ProfileScreen() {
             )
           }
         />
+      ) : activeTab === 'books' ? (
+        <FlatList
+          data={filteredBooks}
+          keyExtractor={(item) => item.id}
+          renderItem={renderBookItem}
+          contentContainerStyle={styles.listContent}
+          style={{ flex: 1 }}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="book-outline" size={64} color={Colors.textSecondary} />
+              <Text style={styles.emptyText}>
+                 {t.noItemsInList}
+              </Text>
+            </View>
+          }
+        />
+      ) : activeTab === 'manga' ? (
+        <FlatList
+          data={filteredManga}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderMangaItem}
+          contentContainerStyle={styles.listContent}
+          style={{ flex: 1 }}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="book-outline" size={64} color={Colors.textSecondary} />
+               <Text style={styles.emptyText}>
+                 {t.noItemsInList}
+              </Text>
+            </View>
+          }
+        />
       ) : activeTab === 'favorites' ? (
-        <FlashList
+        <FlatList
           data={filteredFavorites}
-          ListHeaderComponent={headerContent}
           keyExtractor={(item, index) => {
-            const prefix = item.type === 'show' ? 'show' : 'movie';
-            const id = item.type === 'show' ? item.showId : item.movieId;
+            const prefix = item.type === 'show' ? 'show' : item.type === 'movie' ? 'movie' : item.type === 'book' ? 'book' : 'manga';
+            // @ts-ignore
+            const id = item.showId || item.movieId || item.id;
             return `${prefix}-fav-${id}-idx${index}`;
           }}
-          renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
+          renderItem={({ item }: { item: any }) => {
+            if (item.type === 'show') return renderShowItem({ item: item as TrackedShow });
+            if (item.type === 'movie') return renderMovieItem({ item: item as TrackedMovie });
+            if (item.type === 'book') return renderBookItem({ item: item as TrackedBook });
+            return renderMangaItem({ item: item as TrackedManga });
+          }}
           contentContainerStyle={styles.listContent}
-          // @ts-ignore
-          estimatedItemSize={126}
           style={{ flex: 1 }}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -868,19 +1085,22 @@ export default function ProfileScreen() {
           }
         />
       ) : (
-        <FlashList
+        <FlatList
           data={filteredPlanItems}
-          ListHeaderComponent={headerContent}
           keyExtractor={(item, index) => {
-            const prefix = item.type === 'show' ? 'show' : 'movie';
-            const id = item.type === 'show' ? item.showId : item.movieId;
+            const prefix = item.type === 'show' ? 'show' : item.type === 'movie' ? 'movie' : item.type === 'book' ? 'book' : 'manga';
+            // @ts-ignore
+            const id = item.showId || item.movieId || item.id;
             // Use index to ensure uniqueness even if somehow duplicates exist
             return `${prefix}-${id}-idx${index}`;
           }}
-          renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
+          renderItem={({ item }: { item: any }) => {
+            if (item.type === 'show') return renderShowItem({ item: item as TrackedShow });
+            if (item.type === 'movie') return renderMovieItem({ item: item as TrackedMovie });
+            if (item.type === 'book') return renderBookItem({ item: item as TrackedBook });
+            return renderMangaItem({ item: item as TrackedManga });
+          }}
           contentContainerStyle={styles.listContent}
-          // @ts-ignore
-          estimatedItemSize={126}
           style={{ flex: 1 }}
           ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="bookmark-outline" size={64} color={Colors.textSecondary} /><Text style={styles.emptyText}>{t.noPlanItems}</Text></View>}
         />
@@ -894,10 +1114,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
   settingsButton: { padding: 8 },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: Colors.text },
-  statsContainer: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-  statCard: { flex: 1, backgroundColor: Colors.surface, borderRadius: 12, padding: 16, alignItems: 'center' },
-  statNumber: { fontSize: 24, fontWeight: 'bold', color: Colors.text },
-  statLabel: { fontSize: 12, color: Colors.textSecondary },
+
   tabContainer: { gap: 12, marginBottom: 16 },
   tabRow: { flexDirection: 'row', gap: 12 },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: Colors.surface, borderRadius: 10 },

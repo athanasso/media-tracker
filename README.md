@@ -25,6 +25,8 @@ Each tab (TV Shows and Movies) includes three sub-tabs:
 - **Watchlist** - See all your tracked content in one place
 - **Upcoming** - Discover upcoming releases from your "plan to watch" list with air/release dates
 - **Dropped** - (Optional) View shows you have dropped. This tab can be toggled in Settings.
+- **Books** - (Optional) Track your reading list (Google Books). Can be toggled in Settings.
+- **Manga** - (Optional) Track your manga status (Anilist). Can be toggled in Settings.
 
 #### Plan to Watch Tab
 A dedicated tab showing all items you plan to watch, with sub-tabs:
@@ -110,7 +112,7 @@ Quick access to all your favorite content, filtered by:
 | Notifications | Expo Notifications |
 | Localization | Custom i18n implementation |
 | Language | TypeScript |
-| Performance | FlashList (for optimized lists), Expo Image, Expo Haptics |
+| Performance | FlatList (React Native), Expo Image, Expo Haptics |
 
 ## 🚀 Performance Optimizations (High Impact)
 
@@ -129,10 +131,6 @@ Quick access to all your favorite content, filtered by:
 - **Solution**: Switched to `expo-image`.
 - **Impact**: Superior caching, blur-hash placeholders (no popping), and optimized memory usage during scrolling.
 
-### 📜 Optimized Lists (FlashList)
-- **Problem**: `FlatList` can drop keyframes on long watchlists, especially on Android.
-- **Solution**: Migrated core lists to `@shopify/flash-list`.
-- **Impact**: 5x-10x better performance on UI thread, smooth 60fps scrolling even with hundreds of items.
 
 ### 📳 Haptic Feedback (UX)
 - **Problem**: Interactions felt flat and purely visual.
@@ -153,7 +151,7 @@ Quick access to all your favorite content, filtered by:
    ```bash
    npm install
    ```
-   **⚠️ IMPORTANT**: This project uses **TurboModules** and **New Architecture** (specifically `react-native-mmkv` v4 and `flash-list`). **Expo Go is NOT supported**. You must use a Development Build (Step 4).
+   **⚠️ IMPORTANT**: This project uses **TurboModules** and **New Architecture** (specifically `react-native-mmkv` v4). **Expo Go is NOT supported**. You must use a Development Build (Step 4).
 
 2. **Configure API Key**
    
@@ -189,6 +187,8 @@ Quick access to all your favorite content, filtered by:
 | **Profile** | Comprehensive watchlist management with tabs, search, and sort |
 | **Show Details** | Full info, cast, seasons, episodes with tracking and progress |
 | **Movie Details** | Full info, cast, watch status, and tracking |
+| **Book Details** | Info from Google Books, page count, and reading status |
+| **Manga Details** | Info from Anilist, chapters/volumes, and reading status |
 | **Settings** | Language, date format, import/export data, visual preferences |
 
 ## 🎯 Key Features Explained
@@ -276,6 +276,8 @@ npm run lint       # Run ESLint
 - `GET /movie/upcoming` - Upcoming movies
 - `GET /discover/tv` - Discover shows with filters
 - `GET /discover/movie` - Discover movies with filters
+- `GET /volumes` - Google Books API
+- `POST /graphql` - AniList API (Manga)
 
 ## 🎨 Design System
 
@@ -305,6 +307,8 @@ media-tracker/
 │   │   └── profile.tsx    # Profile/watchlist screen
 │   ├── show/[id].tsx      # Show details
 │   ├── movie/[id].tsx     # Movie details
+│   ├── book/[id].tsx      # Book details
+│   ├── manga/[id].tsx     # Manga details
 │   ├── settings.tsx        # Settings screen
 │   └── stats.tsx           # Detailed statistics & graphs
 ├── hooks/                  # Custom React hooks
