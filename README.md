@@ -166,6 +166,10 @@ Quick access to all your favorite content, filtered by:
    # 4. Add "https://media-tracker-auth.vercel.app/api/callback" as authorized redirect URI
    EXPO_PUBLIC_AUTH_SERVER_URL=https://media-tracker-auth.vercel.app
    EXPO_PUBLIC_GOOGLE_CLIENT_ID=your_web_client_id.apps.googleusercontent.com
+   
+   # Google Books API Key (Optional: for higher rate limits)
+   # Get from https://console.cloud.google.com/apis/library/books.googleapis.com
+   EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY=your_google_books_api_key
    ```
 
 3. **Start development server**

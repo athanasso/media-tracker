@@ -131,7 +131,7 @@ export default function SettingsScreen() {
   const [isDriveLoading, setIsDriveLoading] = useState(false);
 
   const { clearWatchlist } = useWatchlistStore();
-  const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage, showDroppedTab, toggleShowDroppedTab, showBooks, toggleShowBooks, showManga, toggleShowManga } = useSettingsStore();
+  const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage, showDroppedTab, toggleShowDroppedTab, showBooks, toggleShowBooks, showManga, toggleShowManga, showFavorites, toggleShowFavorites } = useSettingsStore();
   
   const t = strings[language] || strings.en;
 
@@ -620,6 +620,20 @@ export default function SettingsScreen() {
                   color={showManga ? Colors.primary : Colors.textSecondary} 
                 />
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.optionItem, showFavorites && styles.optionItemActive]}
+                onPress={toggleShowFavorites}
+              >
+                <Text style={[styles.optionText, showFavorites && styles.optionTextActive]}>
+                  {t.showFavoritesTab}
+                </Text>
+                <Ionicons 
+                  name={showFavorites ? "checkbox" : "square-outline"} 
+                  size={20} 
+                  color={showFavorites ? Colors.primary : Colors.textSecondary} 
+                />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -742,7 +756,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.menuContent}>
                 <Text style={styles.menuTitle}>{t.version}</Text>
-                <Text style={styles.menuSubtitle}>3.0.0</Text>
+                <Text style={styles.menuSubtitle}>3.1.1</Text>
               </View>
             </View>
           </View>

@@ -10,7 +10,11 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // Define Props for ShowItem
 interface ShowItemProps {
-    item: TrackedShow & { airDate?: string };
+    item: TrackedShow & { 
+        airDate?: string; 
+        nextEpisode?: { seasonNumber: number; episodeNumber: number };
+        remainingEpisodes?: number;
+    };
     activeTab: string;
     showsSubTab: string;
     hasNotification: (id: number, type: 'show' | 'movie') => boolean;
@@ -21,6 +25,7 @@ interface ShowItemProps {
     onStatusChange: (id: number, type: 'show' | 'movie', status: TrackingStatus) => void;
     onNotificationPress: (id: number, type: 'show' | 'movie', name: string, date: string) => void;
     onRemove: (id: number) => void;
+    onMarkEpisodeWatched?: (showId: number, seasonNumber: number, episodeNumber: number) => void;
 }
 
 const Colors = {
@@ -29,6 +34,7 @@ const Colors = {
     textSecondary: '#a0a0a0',
     surface: '#1a1a1a',
     surfaceLight: '#2a2a2a',
+    success: '#22c55e',
 };
 
 // Reused styles or we can import them if we export them from profile.tsx
@@ -49,7 +55,8 @@ const ShowItem = memo(({
     t,
     onStatusChange,
     onNotificationPress,
-    onRemove
+    onRemove,
+    onMarkEpisodeWatched
 }: ShowItemProps) => {
     const router = useRouter();
     // Using store hook inside component for specific data
@@ -103,10 +110,31 @@ const ShowItem = memo(({
               )}
             </>
           ) : (
-            <Text style={styles.progressText}>{watchedCount} {t.episodesWatched}</Text>
+            <>
+                <Text style={styles.progressText}>
+                    {watchedCount} {t.episodesWatched}
+                </Text>
+                {activeTab === 'shows' && showsSubTab === 'in_progress' && item.remainingEpisodes !== undefined && (
+                    <Text style={styles.remainingText}>
+                        {item.remainingEpisodes} {t.left || 'left'}
+                    </Text>
+                )}
+            </>
           )}
         </View>
         <View style={styles.itemActions}>
+          {activeTab === 'shows' && showsSubTab === 'in_progress' && item.nextEpisode && onMarkEpisodeWatched && (
+             <TouchableOpacity
+               onPress={(e) => {
+                 e.stopPropagation();
+                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                 onMarkEpisodeWatched(item.showId, item.nextEpisode!.seasonNumber, item.nextEpisode!.episodeNumber);
+               }}
+               style={styles.actionButton}
+             >
+               <Ionicons name="checkmark-circle-outline" size={24} color={Colors.success} />
+             </TouchableOpacity>
+          )}
           {item.airDate && (
             <TouchableOpacity
               onPress={(e) => {
@@ -151,6 +179,8 @@ const styles = StyleSheet.create({
   notificationText: { fontSize: 11, color: Colors.primary, marginTop: 2 },
   itemActions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   notificationButton: { padding: 4 },
+  actionButton: { padding: 4 },
+  remainingText: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
 });
 
 export default ShowItem;

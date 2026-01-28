@@ -62,7 +62,8 @@ export default function ProfileScreen() {
   const { 
     trackedShows, trackedMovies, trackedBooks, trackedManga,
     removeShow, removeMovie, removeBook, removeManga,
-    getWatchedEpisodesCount, updateShowStatus, updateMovieStatus, updateBookStatus, updateBookProgress, updateMangaStatus, updateMangaProgress
+    getWatchedEpisodesCount, updateShowStatus, updateMovieStatus, updateBookStatus, updateBookProgress, updateMangaStatus, updateMangaProgress,
+    markEpisodeWatched, updateShowDetails, updateMovieDetails
   } = useWatchlistStore();
   const { 
     addNotification, 
@@ -70,7 +71,7 @@ export default function ProfileScreen() {
     hasNotification, 
     getNotificationPreference 
   } = useNotificationStore();
-  const { getFormattedDate, language, showBooks, showManga } = useSettingsStore();
+  const { getFormattedDate, language, showBooks, showManga, showFavorites } = useSettingsStore();
 
   const { showDroppedTab } = useSettingsStore();
   const t = strings[language] || strings.en;
@@ -80,7 +81,10 @@ export default function ProfileScreen() {
     if (!showDroppedTab && showsSubTab === 'dropped') {
       setShowsSubTab('in_progress');
     }
-  }, [showDroppedTab, showsSubTab]);
+    if (!showFavorites && activeTab === 'favorites') {
+      setActiveTab('shows');
+    }
+  }, [showDroppedTab, showsSubTab, showFavorites, activeTab]);
 
   // Request notification permissions on mount
   useEffect(() => {
@@ -125,8 +129,8 @@ export default function ProfileScreen() {
     queries: showsToFetchDetails.map(show => ({
       queryKey: ['show-details', show.showId, 'minimal'],
       queryFn: () => getShowDetails(show.showId, []),
-      staleTime: 1000 * 60 * 60 * 24, // 24 hours
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      staleTime: 1000 * 60 * 60, // 1 hour
+      gcTime: 1000 * 60 * 60, // 1 hour
       enabled: activeTab === 'shows', // Fetch whenever on Shows tab to sort into Watched/In Progress
     }))
   });
@@ -141,8 +145,8 @@ export default function ProfileScreen() {
     queries: upcomingMovieIds.map(id => ({
       queryKey: ['movie-details', id, 'minimal'],
       queryFn: () => getMovieDetails(id, []),
-      staleTime: 1000 * 60 * 60 * 24, // 24 hours
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      staleTime: 1000 * 60 * 60, // 1 hour
+      gcTime: 1000 * 60 * 60, // 1 hour
       enabled: moviesSubTab === 'upcoming',
     }))
   });
@@ -151,6 +155,39 @@ export default function ProfileScreen() {
     data: movieDetailsQueriesResult.map(q => q.data).filter(Boolean) as Awaited<ReturnType<typeof getMovieDetails>>[],
     isLoading: movieDetailsQueriesResult.some(q => q.isLoading && q.fetchStatus !== 'idle'),
   }), [movieDetailsQueriesResult]);
+
+  /* Update Store with Cached Dates for Calendar Optimization */
+  useEffect(() => {
+    if (!showDetailsQueries.data) return;
+    
+    showDetailsQueries.data.forEach(details => {
+        const nextAirDate = details.next_episode_to_air?.air_date || null;
+        const currentShow = trackedShows.find(s => s.showId === details.id);
+        
+        // Only update if changed to avoid infinite loop (check string equality)
+        if (currentShow && currentShow.nextAirDate !== nextAirDate) {
+            // Use setTimeout to avoid "update during render" warning if this triggers synchronously
+            setTimeout(() => {
+                updateShowDetails(details.id, { nextAirDate });
+            }, 0);
+        }
+    });
+  }, [showDetailsQueries.data, trackedShows, updateShowDetails]);
+
+  useEffect(() => {
+      if (!movieDetailsQueries.data) return;
+      
+      movieDetailsQueries.data.forEach(details => {
+          const releaseDate = details.release_date || null;
+          const currentMovie = trackedMovies.find(m => m.movieId === details.id);
+          
+          if (currentMovie && currentMovie.releaseDate !== releaseDate) {
+              setTimeout(() => {
+                   updateMovieDetails(details.id, { releaseDate });
+              }, 0);
+          }
+      });
+  }, [movieDetailsQueries.data, trackedMovies, updateMovieDetails]);
 
   const getStatusColor = (status: TrackingStatus) => {
     const colors: Record<TrackingStatus, string> = {
@@ -311,7 +348,11 @@ export default function ProfileScreen() {
 
   // Get filtered and sorted shows
   const filteredShows = useMemo(() => {
-    let shows: (TrackedShow & { airDate?: string })[] = [];
+    let shows: (TrackedShow & { 
+        airDate?: string; 
+        nextEpisode?: { seasonNumber: number; episodeNumber: number };
+        remainingEpisodes?: number;
+    })[] = [];
     const showDetailsMap = new Map(
       (showDetailsQueries.data || []).map(show => [show.id, show])
     );
@@ -337,6 +378,23 @@ export default function ProfileScreen() {
             if (airDate > now) return true;
         }
 
+        // Check next episode too: if cached data says "next" is yesterday, it's actually released
+        const nextEpisode = details.next_episode_to_air;
+        if (nextEpisode && nextEpisode.air_date) {
+            const nextAirDate = new Date(nextEpisode.air_date);
+            nextAirDate.setHours(0, 0, 0, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // If "next" episode has already aired (e.g. yesterday), check if we watched IT
+            if (nextAirDate < today) {
+                const watchedNext = show.watchedEpisodes.some(
+                    e => e.seasonNumber === nextEpisode.season_number && e.episodeNumber === nextEpisode.episode_number
+                );
+                if (!watchedNext) return false; // Available but not watched
+            }
+        }
+
         return show.watchedEpisodes.some(
             e => e.seasonNumber === lastEpisode.season_number && e.episodeNumber === lastEpisode.episode_number
         );
@@ -349,14 +407,83 @@ export default function ProfileScreen() {
               return isCaughtUp(s);
           }
           return false;
-      });
+      }) as (TrackedShow & { airDate?: string; nextEpisode?: { seasonNumber: number; episodeNumber: number }; remainingEpisodes?: number })[];
     } else if (showsSubTab === 'in_progress') {
-      shows = trackedShows.filter(s => {
+      shows = trackedShows
+        .filter(s => {
           if (s.status === 'watching') {
               return !isCaughtUp(s);
           }
           return false;
-      });
+        })
+        .map(show => {
+            const details = showDetailsMap.get(show.showId);
+            if (!details) return show;
+
+            let totalEpisodes = 0;
+            let nextEpisode: { seasonNumber: number; episodeNumber: number } | undefined;
+            
+            // Calculate total and find next episode
+            if (details.seasons) {
+                // Sort seasons just in case
+                const sortedSeasons = [...details.seasons]
+                    .filter(s => s.season_number > 0) // Skip specials usually? Or keep them? Let's skip specials for "next" calculation for now unless watched
+                    .sort((a, b) => a.season_number - b.season_number);
+
+                for (const season of sortedSeasons) {
+                    totalEpisodes += season.episode_count;
+                    
+                    if (!nextEpisode) {
+                        for (let i = 1; i <= season.episode_count; i++) {
+                            const isWatched = show.watchedEpisodes.some(
+                                e => e.seasonNumber === season.season_number && e.episodeNumber === i
+                            );
+                            if (!isWatched) {
+                                nextEpisode = {
+                                    seasonNumber: season.season_number,
+                                    episodeNumber: i
+                                };
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fallback: Check if "next_episode_to_air" is actually a released episode that we missed 
+            // (e.g. new season not in seasons list yet, or cache is slightly stale vs proper season details)
+            const apiNextEp = details.next_episode_to_air;
+            if (apiNextEp && apiNextEp.air_date) {
+                const nextAirDate = new Date(apiNextEp.air_date);
+                nextAirDate.setHours(0, 0, 0, 0);
+                
+                // If it aired in the past (released)
+                if (nextAirDate < today) {
+                    const isWatched = show.watchedEpisodes.some(
+                        e => e.seasonNumber === apiNextEp.season_number && e.episodeNumber === apiNextEp.episode_number
+                    );
+                    
+                    if (!isWatched && !nextEpisode) {
+                        nextEpisode = {
+                            seasonNumber: apiNextEp.season_number,
+                            episodeNumber: apiNextEp.episode_number
+                        };
+                    }
+                }
+            }
+
+            let remainingEpisodes = Math.max(0, totalEpisodes - show.watchedEpisodes.length);
+            // If we have a next episode to watch, but math says 0 remaining (due to stale totalEpisodes), force at least 1
+            if (nextEpisode && remainingEpisodes === 0) {
+                remainingEpisodes = 1;
+            }
+
+            return {
+                ...show,
+                nextEpisode,
+                remainingEpisodes
+            };
+        });
     } else if (showsSubTab === 'upcoming') {
       shows = showsToFetchDetails
         .map(show => {
@@ -376,7 +503,7 @@ export default function ProfileScreen() {
         })
         .filter((show): show is TrackedShow & { airDate: string; next_episode_to_air: any } => show !== null);
     } else if (showsSubTab === 'dropped') {
-      shows = trackedShows.filter(s => s.status === 'dropped');
+      shows = trackedShows.filter(s => s.status === 'dropped') as (TrackedShow & { airDate?: string; nextEpisode?: { seasonNumber: number; episodeNumber: number }; remainingEpisodes?: number })[];
     }
 
     return filterAndSort(shows, showsSearch, showsSort, (s) => s.showName);
@@ -384,7 +511,7 @@ export default function ProfileScreen() {
 
   // Get filtered and sorted movies
   const filteredMovies = useMemo(() => {
-    let movies: (TrackedMovie & { releaseDate?: string })[] = [];
+    let movies: TrackedMovie[] = [];
 
     if (moviesSubTab === 'watched') {
       movies = trackedMovies.filter(m => m.status === 'completed' || m.status === 'watching');
@@ -581,7 +708,7 @@ export default function ProfileScreen() {
   }, [trackedShows, trackedMovies, trackedBooks, trackedManga, favoritesSubTab, favoritesSearch, favoritesSort]);
 
   // Render callbacks
-  const renderShowItem = useCallback(({ item }: { item: TrackedShow & { airDate?: string } }) => (
+  const renderShowItem = useCallback(({ item }: { item: TrackedShow & { airDate?: string; nextEpisode?: any; remainingEpisodes?: number } }) => (
     <ShowItem 
       item={item}
       activeTab={activeTab}
@@ -594,8 +721,9 @@ export default function ProfileScreen() {
       onStatusChange={handleStatusChange}
       onNotificationPress={handleNotificationPress}
       onRemove={removeShow}
+      onMarkEpisodeWatched={(showId, seasonNumber, episodeNumber) => markEpisodeWatched({ showId, seasonNumber, episodeNumber, episodeId: -1 })}
     />
-  ), [activeTab, showsSubTab, hasNotification, getNotificationPreference, getStatusColor, getFormattedDate, t, handleStatusChange, handleNotificationPress, removeShow]);
+  ), [activeTab, showsSubTab, hasNotification, getNotificationPreference, getStatusColor, getFormattedDate, t, handleStatusChange, handleNotificationPress, removeShow, markEpisodeWatched]);
 
   const renderUpcomingShowItem = useCallback(({ item }: { item: TrackedShow & { airDate: string; next_episode_to_air?: any } }) => (
     <UpcomingShowItem 
@@ -608,7 +736,7 @@ export default function ProfileScreen() {
     />
   ), [hasNotification, getFormattedDate, t, handleNotificationPress, removeShow]);
 
-  const renderMovieItem = useCallback(({ item }: { item: TrackedMovie & { releaseDate?: string } }) => (
+  const renderMovieItem = useCallback(({ item }: { item: TrackedMovie }) => (
     <MovieItem 
       item={item}
       activeTab={activeTab}
@@ -702,54 +830,53 @@ export default function ProfileScreen() {
 
       {/* Main Tabs */}
       <View style={styles.tabContainer}>
-        <View style={styles.tabRow}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'shows' && styles.activeTab]} 
-            onPress={() => setActiveTab('shows')}
-          >
-            <Text style={[styles.tabText, activeTab === 'shows' && styles.activeTabText]}>{t.shows}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'movies' && styles.activeTab]} 
-            onPress={() => setActiveTab('movies')}
-          >
-            <Text style={[styles.tabText, activeTab === 'movies' && styles.activeTabText]}>{t.movies}</Text>
-          </TouchableOpacity>
-        </View>
-        {(showBooks || showManga) && (
-          <View style={styles.tabRow}>
-            {showBooks && (
-              <TouchableOpacity 
-                style={[styles.tab, activeTab === 'books' && styles.activeTab]} 
-                onPress={() => setActiveTab('books')}
-              >
-                <Text style={[styles.tabText, activeTab === 'books' && styles.activeTabText]}>{t.books}</Text>
-              </TouchableOpacity>
-            )}
-            {showManga && (
-              <TouchableOpacity 
-                style={[styles.tab, activeTab === 'manga' && styles.activeTab]} 
-                onPress={() => setActiveTab('manga')}
-              >
-                <Text style={[styles.tabText, activeTab === 'manga' && styles.activeTabText]}>{t.manga}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'shows' && styles.activeTab]} 
+          onPress={() => setActiveTab('shows')}
+        >
+          <Text style={[styles.tabText, activeTab === 'shows' && styles.activeTabText]}>{t.shows}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'movies' && styles.activeTab]} 
+          onPress={() => setActiveTab('movies')}
+        >
+          <Text style={[styles.tabText, activeTab === 'movies' && styles.activeTabText]}>{t.movies}</Text>
+        </TouchableOpacity>
+
+        {showBooks && (
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'books' && styles.activeTab]} 
+              onPress={() => setActiveTab('books')}
+            >
+              <Text style={[styles.tabText, activeTab === 'books' && styles.activeTabText]}>{t.books}</Text>
+            </TouchableOpacity>
         )}
-        <View style={styles.tabRow}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'plan' && styles.activeTab]} 
-            onPress={() => setActiveTab('plan')}
-          >
-            <Text style={[styles.tabText, activeTab === 'plan' && styles.activeTabText]}>{t.planToWatch}</Text>
-          </TouchableOpacity>
+
+        {showManga && (
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'manga' && styles.activeTab]} 
+              onPress={() => setActiveTab('manga')}
+            >
+              <Text style={[styles.tabText, activeTab === 'manga' && styles.activeTabText]}>{t.manga}</Text>
+            </TouchableOpacity>
+        )}
+
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'plan' && styles.activeTab]} 
+          onPress={() => setActiveTab('plan')}
+        >
+          <Text style={[styles.tabText, activeTab === 'plan' && styles.activeTabText]}>{t.planToWatch}</Text>
+        </TouchableOpacity>
+
+        {showFavorites && (
           <TouchableOpacity 
             style={[styles.tab, activeTab === 'favorites' && styles.activeTab]} 
             onPress={() => setActiveTab('favorites')}
           >
             <Text style={[styles.tabText, activeTab === 'favorites' && styles.activeTabText]}>{t.favorites}</Text>
           </TouchableOpacity>
-        </View>
+        )}
       </View>
 
       {/* Search and Sort Bar */}
@@ -1115,9 +1242,8 @@ const styles = StyleSheet.create({
   settingsButton: { padding: 8 },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: Colors.text },
 
-  tabContainer: { gap: 12, marginBottom: 16 },
-  tabRow: { flexDirection: 'row', gap: 12 },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: Colors.surface, borderRadius: 10 },
+  tabContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 },
+  tab: { minWidth: '47%', flexGrow: 1, alignItems: 'center', paddingVertical: 12, backgroundColor: Colors.surface, borderRadius: 10 },
   activeTab: { borderWidth: 1, borderColor: Colors.primary },
   tabText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   activeTabText: { color: Colors.text },

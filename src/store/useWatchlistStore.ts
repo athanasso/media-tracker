@@ -28,6 +28,7 @@ interface WatchlistState {
   isShowTracked: (showId: number) => boolean;
   getTrackedShow: (showId: number) => TrackedShow | undefined;
   toggleShowFavorite: (showId: number) => void;
+  updateShowDetails: (showId: number, updates: Partial<TrackedShow>) => void;
 
   // Episode Actions
   markEpisodeWatched: (episode: Omit<WatchedEpisode, 'watchedAt'>) => void;
@@ -49,6 +50,7 @@ interface WatchlistState {
   isMovieWatched: (movieId: number) => boolean;
   getTrackedMovie: (movieId: number) => TrackedMovie | undefined;
   toggleMovieFavorite: (movieId: number) => void;
+  updateMovieDetails: (movieId: number, updates: Partial<TrackedMovie>) => void;
 
   // Book Actions
   addBook: (book: Omit<TrackedBook, 'addedAt' | 'status'>) => void;
@@ -137,6 +139,14 @@ export const useWatchlistStore = create<WatchlistState>()(
         set((state) => ({
           trackedShows: state.trackedShows.map((show) =>
             show.showId === showId ? { ...show, isFavorite: !show.isFavorite } : show
+          ),
+        }));
+      },
+
+      updateShowDetails: (showId, updates) => {
+        set((state) => ({
+          trackedShows: state.trackedShows.map((show) =>
+            show.showId === showId ? { ...show, ...updates } : show
           ),
         }));
       },
@@ -407,6 +417,14 @@ export const useWatchlistStore = create<WatchlistState>()(
         }));
       },
 
+      updateMovieDetails: (movieId, updates) => {
+        set((state) => ({
+          trackedMovies: state.trackedMovies.map((movie) =>
+            movie.movieId === movieId ? { ...movie, ...updates } : movie
+          ),
+        }));
+      },
+
       // ==========================================
       // BOOK ACTIONS
       // ==========================================
@@ -434,9 +452,18 @@ export const useWatchlistStore = create<WatchlistState>()(
 
       updateBookStatus: (bookId, status) => {
         set((state) => ({
-          trackedBooks: state.trackedBooks.map((book) =>
-            book.id === bookId ? { ...book, status } : book
-          ),
+          trackedBooks: state.trackedBooks.map((book) => {
+             if (book.id !== bookId) return book;
+
+             if (status === 'completed') {
+                 return {
+                     ...book,
+                     status,
+                     currentPage: book.totalPages || book.currentPage
+                 };
+             }
+             return { ...book, status };
+          }),
         }));
       },
 
@@ -491,9 +518,21 @@ export const useWatchlistStore = create<WatchlistState>()(
 
       updateMangaStatus: (mangaId, status) => {
         set((state) => ({
-          trackedManga: state.trackedManga.map((manga) =>
-            manga.id === mangaId ? { ...manga, status } : manga
-          ),
+          trackedManga: state.trackedManga.map((manga) => {
+            if (manga.id !== mangaId) return manga;
+            
+            // If marking as completed, auto-fill progress
+            if (status === 'completed') {
+                return {
+                    ...manga,
+                    status,
+                    currentChapter: manga.totalChapters || manga.currentChapter,
+                    currentVolume: manga.totalVolumes || manga.currentVolume
+                };
+            }
+            
+            return { ...manga, status };
+          }),
         }));
       },
 

@@ -269,6 +269,7 @@ export interface TrackedShow {
   // Stats support
   genres?: Genre[];
   episodeRunTime?: number[]; // from API
+  nextAirDate?: string | null; // Caching for calendar
 }
 
 export interface TrackedMovie {
@@ -282,6 +283,7 @@ export interface TrackedMovie {
   // Stats support
   genres?: Genre[];
   runtime?: number | null;
+  releaseDate?: string | null; // Caching for calendar
 }
 
 export type TrackingStatus = 

@@ -12,6 +12,7 @@ interface SettingsState {
   showDroppedTab: boolean;
   showBooks: boolean;
   showManga: boolean;
+  showFavorites: boolean;
   
   setDateFormat: (format: DateFormat) => void;
   setCustomDateFormat: (format: string) => void;
@@ -19,6 +20,7 @@ interface SettingsState {
   toggleShowDroppedTab: () => void;
   toggleShowBooks: () => void;
   toggleShowManga: () => void;
+  toggleShowFavorites: () => void;
   getFormattedDate: (dateString: string | Date | null | undefined) => string;
 }
 
@@ -31,6 +33,7 @@ export const useSettingsStore = create<SettingsState>()(
       showDroppedTab: true,
       showBooks: true,
       showManga: true,
+      showFavorites: true,
 
       setDateFormat: (format) => set({ dateFormat: format }),
       setCustomDateFormat: (format) => set({ customDateFormat: format }),
@@ -38,6 +41,7 @@ export const useSettingsStore = create<SettingsState>()(
       toggleShowDroppedTab: () => set((state) => ({ showDroppedTab: !state.showDroppedTab })),
       toggleShowBooks: () => set((state) => ({ showBooks: !state.showBooks })),
       toggleShowManga: () => set((state) => ({ showManga: !state.showManga })),
+      toggleShowFavorites: () => set((state) => ({ showFavorites: !state.showFavorites })),
 
       // Helper to format date based on current settings
       getFormattedDate: (dateInput) => {

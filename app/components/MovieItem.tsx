@@ -8,7 +8,7 @@ import React, { memo } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface MovieItemProps {
-    item: TrackedMovie & { releaseDate?: string };
+    item: TrackedMovie;
     activeTab: string;
     moviesSubTab: string;
     hasNotification: (id: number, type: 'show' | 'movie') => boolean;

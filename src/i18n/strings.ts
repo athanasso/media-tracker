@@ -189,6 +189,7 @@ export const strings = {
     showDroppedTab: 'Show "Dropped" Tab',
     showBooksTab: 'Show "Books" Tab',
     showMangaTab: 'Show "Manga" Tab',
+    showFavoritesTab: 'Show "Favorites" Tab',
     
     // Details Screen (Show/Movie)
     loadingShow: 'Loading show details...',
@@ -254,6 +255,7 @@ export const strings = {
     planToRead: 'Plan to Read',
     viewOnGoogleBooks: 'View on Google Books',
     by: 'by',
+    left: 'left',
   },
   el: {
 
@@ -446,6 +448,7 @@ export const strings = {
     showDroppedTab: 'Προβολή καρτέλας "Διακοπή"',
     showBooksTab: 'Προβολή καρτέλας "Βιβλία"',
     showMangaTab: 'Προβολή καρτέλας "Manga"',
+    showFavoritesTab: 'Προβολή καρτέλας "Αγαπημένα"',
 
     // Details Screen
     loadingShow: 'Φόρτωση λεπτομερειών...',
@@ -511,5 +514,6 @@ export const strings = {
     planToRead: 'Στα Σχέδια',
     viewOnGoogleBooks: 'Προβολή στο Google Books',
     by: 'από',
+    left: 'απομένουν',
   }
 };

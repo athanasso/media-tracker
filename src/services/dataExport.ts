@@ -32,7 +32,7 @@ export interface ExportData {
 }
 
 
-const EXPORT_VERSION = '3.0.0';
+const EXPORT_VERSION = '3.1.1';
 const APP_NAME = 'MediaTracker';
 
 /**
