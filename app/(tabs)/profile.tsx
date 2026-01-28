@@ -11,7 +11,7 @@ import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MovieItem from '../components/MovieItem';
 import ShowItem from '../components/ShowItem';
@@ -584,8 +584,9 @@ export default function ProfileScreen() {
     );
   };
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+  /* Header Content for FlashList */
+  const headerContent = (
+    <View>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t.profile}</Text>
         <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/settings')}>
@@ -619,7 +620,6 @@ export default function ProfileScreen() {
       </View>
 
       {/* Main Tabs */}
-      {/* Main Tabs - 2x2 Grid */}
       <View style={styles.tabContainer}>
         <View style={styles.tabRow}>
           <TouchableOpacity 
@@ -661,6 +661,7 @@ export default function ProfileScreen() {
             placeholderTextColor={Colors.textSecondary}
             value={activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : activeTab === 'plan' ? planSearch : favoritesSearch}
             onChangeText={activeTab === 'shows' ? setShowsSearch : activeTab === 'movies' ? setMoviesSearch : activeTab === 'plan' ? setPlanSearch : setFavoritesSearch}
+            autoCorrect={false}
           />
           {(activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : activeTab === 'plan' ? planSearch : favoritesSearch) ? (
             <TouchableOpacity onPress={() => activeTab === 'shows' ? setShowsSearch('') : activeTab === 'movies' ? setMoviesSearch('') : activeTab === 'plan' ? setPlanSearch('') : setFavoritesSearch('')}>
@@ -677,184 +678,201 @@ export default function ProfileScreen() {
       </View>
       {renderSortMenu(activeTab)}
 
+      {/* Sub Tabs */}
+      {activeTab === 'shows' && (
+        <View style={styles.subTabContainer}>
+          <TouchableOpacity 
+            style={[styles.subTab, showsSubTab === 'watched' && styles.activeSubTab]} 
+            onPress={() => setShowsSubTab('watched')}
+          >
+            <Text style={[styles.subTabText, showsSubTab === 'watched' && styles.activeSubTabText]}>{t.watched}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, showsSubTab === 'in_progress' && styles.activeSubTab]} 
+            onPress={() => setShowsSubTab('in_progress')}
+          >
+            <Text style={[styles.subTabText, showsSubTab === 'in_progress' && styles.activeSubTabText]}>{t.inProgress}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, showsSubTab === 'upcoming' && styles.activeSubTab]} 
+            onPress={() => setShowsSubTab('upcoming')}
+          >
+            <Text style={[styles.subTabText, showsSubTab === 'upcoming' && styles.activeSubTabText]}>{t.upcoming}</Text>
+          </TouchableOpacity>
+          {showDroppedTab && (
+            <TouchableOpacity 
+              style={[styles.subTab, showsSubTab === 'dropped' && styles.activeSubTab]} 
+              onPress={() => setShowsSubTab('dropped')}
+            >
+              <Text style={[styles.subTabText, showsSubTab === 'dropped' && styles.activeSubTabText]}>{t.statusDropped}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {activeTab === 'movies' && (
+        <View style={styles.subTabContainer}>
+          <TouchableOpacity 
+            style={[styles.subTab, moviesSubTab === 'watched' && styles.activeSubTab]} 
+            onPress={() => setMoviesSubTab('watched')}
+          >
+            <Text style={[styles.subTabText, moviesSubTab === 'watched' && styles.activeSubTabText]}>{t.watched}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, moviesSubTab === 'upcoming' && styles.activeSubTab]} 
+            onPress={() => setMoviesSubTab('upcoming')}
+          >
+            <Text style={[styles.subTabText, moviesSubTab === 'upcoming' && styles.activeSubTabText]}>{t.upcoming}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {activeTab === 'favorites' && (
+        <View style={styles.subTabContainer}>
+            <TouchableOpacity 
+            style={[styles.subTab, favoritesSubTab === 'all' && styles.activeSubTab]} 
+            onPress={() => setFavoritesSubTab('all')}
+          >
+            <Text style={[styles.subTabText, favoritesSubTab === 'all' && styles.activeSubTabText]}>{t.all}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, favoritesSubTab === 'shows' && styles.activeSubTab]} 
+            onPress={() => setFavoritesSubTab('shows')}
+          >
+            <Text style={[styles.subTabText, favoritesSubTab === 'shows' && styles.activeSubTabText]}>{t.shows}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, favoritesSubTab === 'movies' && styles.activeSubTab]} 
+            onPress={() => setFavoritesSubTab('movies')}
+          >
+            <Text style={[styles.subTabText, favoritesSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {activeTab === 'plan' && (
+        <View style={styles.subTabContainer}>
+          <TouchableOpacity 
+            style={[styles.subTab, planSubTab === 'all' && styles.activeSubTab]} 
+            onPress={() => setPlanSubTab('all')}
+          >
+            <Text style={[styles.subTabText, planSubTab === 'all' && styles.activeSubTabText]}>{t.all}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, planSubTab === 'shows' && styles.activeSubTab]} 
+            onPress={() => setPlanSubTab('shows')}
+          >
+            <Text style={[styles.subTabText, planSubTab === 'shows' && styles.activeSubTabText]}>{t.shows}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.subTab, planSubTab === 'movies' && styles.activeSubTab]} 
+            onPress={() => setPlanSubTab('movies')}
+          >
+            <Text style={[styles.subTabText, planSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
       {activeTab === 'shows' ? (
-        <>
-          <View style={styles.subTabContainer}>
-            <TouchableOpacity 
-              style={[styles.subTab, showsSubTab === 'watched' && styles.activeSubTab]} 
-              onPress={() => setShowsSubTab('watched')}
-            >
-              <Text style={[styles.subTabText, showsSubTab === 'watched' && styles.activeSubTabText]}>{t.watched}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.subTab, showsSubTab === 'in_progress' && styles.activeSubTab]} 
-              onPress={() => setShowsSubTab('in_progress')}
-            >
-              <Text style={[styles.subTabText, showsSubTab === 'in_progress' && styles.activeSubTabText]}>{t.inProgress}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.subTab, showsSubTab === 'upcoming' && styles.activeSubTab]} 
-              onPress={() => setShowsSubTab('upcoming')}
-            >
-              <Text style={[styles.subTabText, showsSubTab === 'upcoming' && styles.activeSubTabText]}>{t.upcoming}</Text>
-            </TouchableOpacity>
-            {showDroppedTab && (
-              <TouchableOpacity 
-                style={[styles.subTab, showsSubTab === 'dropped' && styles.activeSubTab]} 
-                onPress={() => setShowsSubTab('dropped')}
-              >
-                <Text style={[styles.subTabText, showsSubTab === 'dropped' && styles.activeSubTabText]}>{t.statusDropped}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          {showsSubTab === 'upcoming' && showDetailsQueries.isLoading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>{t.loadingUpcomingShows}</Text>
-            </View>
-          ) : (
-              <FlashList
-                data={filteredShows}
-                keyExtractor={(item) => item.showId.toString()}
-                renderItem={(props) => showsSubTab === 'upcoming' 
-                  ? renderUpcomingShowItem(props as any) 
-                  : renderShowItem(props)
-                }
-                contentContainerStyle={styles.listContent}
-                // @ts-ignore
-                estimatedItemSize={114}
-                ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="tv-outline" size={64} color={Colors.textSecondary} />
-                  <Text style={styles.emptyText}>
-                    {showsSubTab === 'watched' ? t.noWatchedShows :
-                     showsSubTab === 'in_progress' ? t.noTrackedShows :
-                     t.noUpcomingShows}
-                  </Text>
-                </View>
-              }
-            />
-          )}
-        </>
-      ) : activeTab === 'movies' ? (
-        <>
-          <View style={styles.subTabContainer}>
-            <TouchableOpacity 
-              style={[styles.subTab, moviesSubTab === 'watched' && styles.activeSubTab]} 
-              onPress={() => setMoviesSubTab('watched')}
-            >
-              <Text style={[styles.subTabText, moviesSubTab === 'watched' && styles.activeSubTabText]}>{t.watched}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.subTab, moviesSubTab === 'upcoming' && styles.activeSubTab]} 
-              onPress={() => setMoviesSubTab('upcoming')}
-            >
-              <Text style={[styles.subTabText, moviesSubTab === 'upcoming' && styles.activeSubTabText]}>{t.upcoming}</Text>
-            </TouchableOpacity>
-          </View>
-          {moviesSubTab === 'upcoming' && movieDetailsQueries.isLoading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>{t.loadingUpcomingMovies}</Text>
-            </View>
-          ) : (
-            <FlashList
-              data={filteredMovies}
-              keyExtractor={(item) => item.movieId.toString()}
-              renderItem={renderMovieItem}
-              contentContainerStyle={styles.listContent}
-              // @ts-ignore
-              estimatedItemSize={114}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="film-outline" size={64} color={Colors.textSecondary} />
-                  <Text style={styles.emptyText}>
-                    {moviesSubTab === 'watched' ? t.noWatchedMovies :
-                     t.noUpcomingMovies}
-                  </Text>
-                </View>
-              }
-            />
-          )}
-        </>
-      ) : activeTab === 'favorites' ? (
-        <>
-          <View style={styles.subTabContainer}>
-            <TouchableOpacity 
-              style={[styles.subTab, favoritesSubTab === 'all' && styles.activeSubTab]} 
-              onPress={() => setFavoritesSubTab('all')}
-            >
-              <Text style={[styles.subTabText, favoritesSubTab === 'all' && styles.activeSubTabText]}>{t.all}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.subTab, favoritesSubTab === 'shows' && styles.activeSubTab]} 
-              onPress={() => setFavoritesSubTab('shows')}
-            >
-              <Text style={[styles.subTabText, favoritesSubTab === 'shows' && styles.activeSubTabText]}>{t.shows}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.subTab, favoritesSubTab === 'movies' && styles.activeSubTab]} 
-              onPress={() => setFavoritesSubTab('movies')}
-            >
-              <Text style={[styles.subTabText, favoritesSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
-            </TouchableOpacity>
-          </View>
-          <FlashList
-            data={filteredFavorites}
-            keyExtractor={(item, index) => {
-              // Ensure unique keys
-              const prefix = item.type === 'show' ? 'show' : 'movie';
-              const id = item.type === 'show' ? item.showId : item.movieId;
-              return `${prefix}-fav-${id}-idx${index}`;
-            }}
-            renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
-            contentContainerStyle={styles.listContent}
-            // @ts-ignore
-            estimatedItemSize={114}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="heart-outline" size={64} color={Colors.textSecondary} />
-                <Text style={styles.emptyText}>{t.findFavorites}</Text>
+        <FlashList
+          data={filteredShows}
+          ListHeaderComponent={headerContent}
+          keyExtractor={(item) => item.showId.toString()}
+          renderItem={(props) => showsSubTab === 'upcoming' 
+            ? renderUpcomingShowItem(props as any) 
+            : renderShowItem(props)
+          }
+          contentContainerStyle={styles.listContent}
+          // @ts-ignore
+          estimatedItemSize={126}
+          style={{ flex: 1 }}
+          ListEmptyComponent={
+            (showsSubTab === 'upcoming' && showDetailsQueries.isLoading) ? (
+              <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={Colors.primary} />
+                  <Text style={styles.loadingText}>{t.loadingUpcomingShows}</Text>
               </View>
-            }
-          />
-        </>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="tv-outline" size={64} color={Colors.textSecondary} />
+                <Text style={styles.emptyText}>
+                  {showsSubTab === 'watched' ? t.noWatchedShows :
+                  showsSubTab === 'in_progress' ? t.noTrackedShows :
+                  t.noUpcomingShows}
+                </Text>
+              </View>
+            )
+          }
+        />
+      ) : activeTab === 'movies' ? (
+        <FlashList
+          data={filteredMovies}
+          ListHeaderComponent={headerContent}
+          keyExtractor={(item) => item.movieId.toString()}
+          renderItem={renderMovieItem}
+          contentContainerStyle={styles.listContent}
+          // @ts-ignore
+          estimatedItemSize={126}
+          style={{ flex: 1 }}
+          ListEmptyComponent={
+            (moviesSubTab === 'upcoming' && movieDetailsQueries.isLoading) ? (
+              <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={Colors.primary} />
+                  <Text style={styles.loadingText}>{t.loadingUpcomingMovies}</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="film-outline" size={64} color={Colors.textSecondary} />
+                <Text style={styles.emptyText}>
+                  {moviesSubTab === 'watched' ? t.noWatchedMovies :
+                  t.noUpcomingMovies}
+                </Text>
+              </View>
+            )
+          }
+        />
+      ) : activeTab === 'favorites' ? (
+        <FlashList
+          data={filteredFavorites}
+          ListHeaderComponent={headerContent}
+          keyExtractor={(item, index) => {
+            const prefix = item.type === 'show' ? 'show' : 'movie';
+            const id = item.type === 'show' ? item.showId : item.movieId;
+            return `${prefix}-fav-${id}-idx${index}`;
+          }}
+          renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
+          contentContainerStyle={styles.listContent}
+          // @ts-ignore
+          estimatedItemSize={126}
+          style={{ flex: 1 }}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="heart-outline" size={64} color={Colors.textSecondary} />
+              <Text style={styles.emptyText}>{t.findFavorites}</Text>
+            </View>
+          }
+        />
       ) : (
-        <>
-          <View style={styles.subTabContainer}>
-            <TouchableOpacity 
-              style={[styles.subTab, planSubTab === 'all' && styles.activeSubTab]} 
-              onPress={() => setPlanSubTab('all')}
-            >
-              <Text style={[styles.subTabText, planSubTab === 'all' && styles.activeSubTabText]}>{t.all}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.subTab, planSubTab === 'shows' && styles.activeSubTab]} 
-              onPress={() => setPlanSubTab('shows')}
-            >
-              <Text style={[styles.subTabText, planSubTab === 'shows' && styles.activeSubTabText]}>{t.shows}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.subTab, planSubTab === 'movies' && styles.activeSubTab]} 
-              onPress={() => setPlanSubTab('movies')}
-            >
-              <Text style={[styles.subTabText, planSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
-            </TouchableOpacity>
-          </View>
-          <FlashList
-            data={filteredPlanItems}
-            keyExtractor={(item, index) => {
-              // Ensure unique keys by combining type and id (index as fallback for safety)
-              const prefix = item.type === 'show' ? 'show' : 'movie';
-              const id = item.type === 'show' ? item.showId : item.movieId;
-              // Use index to ensure uniqueness even if somehow duplicates exist
-              return `${prefix}-${id}-idx${index}`;
-            }}
-            renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
-            contentContainerStyle={styles.listContent}
-            // @ts-ignore
-            estimatedItemSize={114}
-            ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="bookmark-outline" size={64} color={Colors.textSecondary} /><Text style={styles.emptyText}>{t.noPlanItems}</Text></View>}
-          />
-        </>
+        <FlashList
+          data={filteredPlanItems}
+          ListHeaderComponent={headerContent}
+          keyExtractor={(item, index) => {
+            const prefix = item.type === 'show' ? 'show' : 'movie';
+            const id = item.type === 'show' ? item.showId : item.movieId;
+            // Use index to ensure uniqueness even if somehow duplicates exist
+            return `${prefix}-${id}-idx${index}`;
+          }}
+          renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
+          contentContainerStyle={styles.listContent}
+          // @ts-ignore
+          estimatedItemSize={126}
+          style={{ flex: 1 }}
+          ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="bookmark-outline" size={64} color={Colors.textSecondary} /><Text style={styles.emptyText}>{t.noPlanItems}</Text></View>}
+        />
       )}
     </SafeAreaView>
   );

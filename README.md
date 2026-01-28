@@ -95,9 +95,9 @@ Quick access to all your favorite content, filtered by:
 
 | Category | Technology |
 |----------|------------|
-| Framework | React Native with Expo SDK 54 |
+| Framework | React Native 0.81 (New Architecture Enabled) with Expo SDK 54 |
 | Navigation | Expo Router (file-based) |
-| State Management | Zustand with persistence (MMKV) |
+| State Management | Zustand with persistence (react-native-mmkv v4) |
 | Data Fetching | TanStack Query (React Query) |
 | Styling | NativeWind (Tailwind CSS) + StyleSheet |
 | API | The Movie Database (TMDB) |
@@ -107,6 +107,16 @@ Quick access to all your favorite content, filtered by:
 | Performance | FlashList (for optimized lists), Expo Image, Expo Haptics |
 
 ## 🚀 Performance Optimizations (High Impact)
+
+### 🏎️ TurboModules & New Architecture
+- **Problem**: Legacy bridge caused slow native communication.
+- **Solution**: Fully enabled New Architecture with JSI and TurboModules.
+- **Impact**: Direct C++ bindings for critical modules like Storage (MMKV) and Reanimated.
+
+### ⚡ Optimized Data Import (O(1))
+- **Problem**: Importing thousands of existing items from TV Time caused massive UI lag due to O(N) checks.
+- **Solution**: Implemented high-performance Set-based lookup algorithms (O(1)).
+- **Impact**: Instant processing of imports regardless of library size.
 
 ### 🖼️ High-Performance Images (Expo Image)
 - **Problem**: Standard `Image` component struggles with memory and caching lists of posters.
@@ -137,7 +147,7 @@ Quick access to all your favorite content, filtered by:
    ```bash
    npm install
    ```
-   **Note**: Since this project uses native modules like `react-native-mmkv` and `flash-list`, you must use a development build.
+   **⚠️ IMPORTANT**: This project uses **TurboModules** and **New Architecture** (specifically `react-native-mmkv` v4 and `flash-list`). **Expo Go is NOT supported**. You must use a Development Build (Step 4).
 
 2. **Configure API Key**
    
@@ -151,7 +161,8 @@ Quick access to all your favorite content, filtered by:
    npx expo start
    ```
 
-4. **Run the app**
+4. **Run the app (Development Build)**
+   This command compiles the native code on your local machine.
    - For Android: `npx expo run:android`
    - For iOS: `npx expo run:ios`
 
@@ -171,6 +182,7 @@ Quick access to all your favorite content, filtered by:
 ### Profile Screen
 The Profile screen is your central hub for managing your watchlist:
 
+- **Collapsible Header Layout**: Header elements scroll away to maximize content visibility on smaller screens.
 - **Main Tabs**: TV Shows, Movies, Plan to Watch, Favorites
 - **Sub-Tabs**: Each main tab has Watched, Watchlist, and Upcoming (except Plan to Watch and Favorites which have specific filters)
 - **Search Bar**: Filter items by name across all tabs
@@ -273,6 +285,7 @@ media-tracker/
 │   ├── movie/[id].tsx     # Movie details
 │   ├── settings.tsx        # Settings screen
 │   └── stats.tsx           # Detailed statistics & graphs
+├── hooks/                  # Custom React hooks
 ├── src/
 │   ├── store/             # Zustand stores
 │   │   ├── useWatchlistStore.ts
@@ -283,8 +296,7 @@ media-tracker/
 │   │   ├── dataExport.ts  # Export functionality
 │   │   └── tvTimeImport.ts # TV Time import
 │   ├── i18n/              # Localization strings
-│   ├── types/             # TypeScript types
-│   └── hooks/             # Custom React hooks
+│   └── types/             # TypeScript types
 └── assets/                # Images and static assets
 ```
 

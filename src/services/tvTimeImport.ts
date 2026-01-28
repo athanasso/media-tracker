@@ -297,6 +297,9 @@ export async function importFromTVTime(
     const newMovies: TrackedMovie[] = [];
     const total = tvTimeData.length;
     
+    const existingShowIds = new Set(store.trackedShows.map(s => s.showId));
+    const existingMovieIds = new Set(store.trackedMovies.map(m => m.movieId));
+
     // Detect Type based on first item being processed (simple check, or we could pass it in)
     // We can just check the first item to see if it has 'seasons'
     const firstItem = tvTimeData[0];
@@ -331,17 +334,17 @@ export async function importFromTVTime(
       }
 
       if (tmdbMatch.media_type === 'movie') {
-        const existingMovie = store.trackedMovies.find(m => m.movieId === tmdbMatch.id);
-        if (!existingMovie) {
+        if (!existingMovieIds.has(tmdbMatch.id)) {
           const movie = createTrackedMovie(item as TVTimeMovie, tmdbMatch.id, tmdbMatch.posterPath);
           newMovies.push(movie);
+          existingMovieIds.add(tmdbMatch.id);
           result.movies++;
         }
       } else {
-        const existingShow = store.trackedShows.find(s => s.showId === tmdbMatch.id);
-        if (!existingShow) {
+        if (!existingShowIds.has(tmdbMatch.id)) {
           const show = createTrackedShow(item as TVTimeShow, tmdbMatch.id, tmdbMatch.posterPath);
           newShows.push(show);
+          existingShowIds.add(tmdbMatch.id);
           result.shows++;
         }
       }

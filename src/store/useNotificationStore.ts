@@ -1,5 +1,5 @@
 import * as Notifications from 'expo-notifications';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { mmkvStorage } from './storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -238,7 +238,7 @@ export const useNotificationStore = create<NotificationState>()(
     }),
     {
       name: 'Media-Tracker-notifications',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => mmkvStorage),
     }
   )
 );
