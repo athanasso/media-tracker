@@ -5,13 +5,16 @@
 
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import * as Linking from 'expo-linking';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import { handleOAuthCallback } from '@/src/services/googleAuth';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -39,7 +42,35 @@ export const unstable_settings = {
 export default function RootLayout() {
   // Hide splash screen after layout is ready
   useEffect(() => {
+    // Hide splash screen after layout is ready
     SplashScreen.hideAsync();
+
+    // Deep link handler for OAuth
+    const handleDeepLink = async (event: { url: string }) => {
+      // Check for OAuth parameters in the URL
+      if (event.url && (event.url.includes('access_token') || event.url.includes('code') || event.url.includes('refresh_token'))) {
+        console.log('Received deep link:', event.url);
+        try {
+          await handleOAuthCallback(event.url);
+          // Redirect to Settings after successful auth
+          router.replace('/settings');
+        } catch (error) {
+          console.error('Deep link error:', error);
+        }
+      }
+    };
+
+    // Listen for incoming links
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Check initial URL
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   return (

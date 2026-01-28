@@ -65,6 +65,12 @@ Quick access to all your favorite content, filtered by:
 - Smooth animations and transitions
 - Intuitive tab navigation
 
+### ☁️ Cloud Sync (Google Drive)
+- **Seamless Backup** - Sync your entire watchlist and history to Google Drive
+- **Secure Integration** - Uses secure Google Auth with restricted `app-folder` access
+- **Cross-Device Sync** - Restore your data on any device
+- **Automatic Folder Management** - Backups are neatly stored in a dedicated `media-tracker` folder
+
 ### 💾 Data Management
 - **High-Performance Storage** - All data saved instantly using `react-native-mmkv` (fastest key-value storage)
 - **Export Backup** - Export your watchlist to JSON file
@@ -153,7 +159,15 @@ Quick access to all your favorite content, filtered by:
    
    Create a `.env` file in the root directory:
    ```env
-   EXPO_PUBLIC_TMDB_API_KEY=your_api_key_here
+   EXPO_PUBLIC_TMDB_API_KEY=your_tmdb_api_key_here
+   
+   # Google Auth (Required for Cloud Sync)
+   # 1. Create a project in Google Cloud Console
+   # 2. Enable "Google Drive API"
+   # 3. Create OAuth 2.0 Credentials (Web Client)
+   # 4. Add "https://media-tracker-auth.vercel.app/api/callback" as authorized redirect URI
+   EXPO_PUBLIC_AUTH_SERVER_URL=https://media-tracker-auth.vercel.app
+   EXPO_PUBLIC_GOOGLE_CLIENT_ID=your_web_client_id.apps.googleusercontent.com
    ```
 
 3. **Start development server**
@@ -231,6 +245,14 @@ Import your existing watchlist from TV Time exports with intelligent matching:
    - Items that cannot be matched are listed as "Not Matched" for your reference.
    - **Extract**: You can easily share or extract the list of unmatched items to verify them manually.
 5. Your library will be populated with correct statuses and progress.
+
+### ☁️ Cloud Sync (Google Drive)
+1. Go to Profile → Settings
+2. Tap "Sign In with Google" and authorize the app
+3. **Backup**: Tap "Backup to Drive" to safely save your current watchlist to the cloud.
+4. **Restore**: Tap "Restore from Drive" to download your remote backup. You can choose to:
+   - **Merge**: Combine cloud data with your local data.
+   - **Replace**: Overwrite local data with the cloud backup.
 
 ## 🔧 Scripts
 

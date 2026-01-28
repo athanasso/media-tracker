@@ -6,8 +6,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { Stack } from 'expo-router';
-import React, { useState } from 'react';
+import { Stack, useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -30,6 +30,8 @@ import { getBackdropUrl, getPosterUrl } from '@/src/services/api/client';
 import { exportWatchlistData, getExportPreview, importWatchlistData } from '@/src/services/dataExport';
 import { importFromTVTime, PendingImportItem, processPendingImports } from '@/src/services/tvTimeImport';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
+import { startOAuthFlow, signOut, isAuthenticated, getUserInfo, UserInfo } from '@/src/services/googleAuth';
+import { uploadBackup, syncFromDrive, listBackups } from '@/src/services/googleDrive';
 
 // Theme colors
 const Colors = {
@@ -122,6 +124,10 @@ export default function SettingsScreen() {
   const [selectedPending, setSelectedPending] = useState<Set<number>>(new Set());
   const [detailsItem, setDetailsItem] = useState<PendingImportItem | null>(null);
 
+  // Google Drive State
+  const [googleUser, setGoogleUser] = useState<UserInfo | null>(null);
+  const [isDriveLoading, setIsDriveLoading] = useState(false);
+
   const { clearWatchlist } = useWatchlistStore();
   const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage, showDroppedTab, toggleShowDroppedTab } = useSettingsStore();
   
@@ -129,6 +135,125 @@ export default function SettingsScreen() {
 
   // Get current data stats
   const exportPreview = getExportPreview();
+
+  // Check auth status on focus
+  useFocusEffect(
+    useCallback(() => {
+      checkAuth();
+    }, [])
+  );
+
+  const checkAuth = () => {
+    if (isAuthenticated()) {
+      setGoogleUser(getUserInfo());
+    } else {
+      setGoogleUser(null);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+        setIsDriveLoading(true);
+        await startOAuthFlow();
+        // Auth completes via deep link. The useFocusEffect will update state when app returns.
+    } catch (error) {
+        Alert.alert('Error', 'Failed to sign in with Google');
+        console.error(error);
+    } finally {
+        setIsDriveLoading(false);
+    }
+  };
+
+  const handleGoogleSignOut = async () => {
+    Alert.alert(
+        t.signOut || 'Sign Out', 
+        t.signOutConfirm || 'Are you sure you want to sign out?',
+        [
+            { text: t.cancel, style: 'cancel' },
+            { 
+                text: t.signOut || 'Sign Out', 
+                style: 'destructive',
+                onPress: async () => {
+                    await signOut();
+                    setGoogleUser(null);
+                }
+            }
+        ]
+    );
+  };
+
+  const handleDriveBackup = async () => {
+    if (!googleUser) return;
+    setIsDriveLoading(true);
+    try {
+        await uploadBackup();
+        Alert.alert(t.success || 'Success', t.backupComplete || 'Backup successfully uploaded to Google Drive!');
+    } catch (error) {
+        Alert.alert('Error', 'Failed to upload backup to Google Drive');
+        console.error(error);
+    } finally {
+        setIsDriveLoading(false);
+    }
+  };
+
+  const handleDriveRestore = async () => {
+    if (!googleUser) return;
+    setIsDriveLoading(true);
+    try {
+        // Check if backups exist
+        try {
+            const backups = await listBackups();
+            if (backups.length === 0) {
+                Alert.alert(t.noBackup || 'No Backup', t.noBackupFound || 'No backup found in Google Drive.');
+                return;
+            }
+        } catch (e) {
+            Alert.alert('Error', 'Failed to list backups');
+            return;
+        }
+
+        Alert.alert(
+            t.restoreBackup || 'Restore Backup',
+            t.restoreConfirm || 'Do you want to merge with existing data or replace it entirely?',
+            [
+                { text: t.cancel, style: 'cancel' },
+                {
+                    text: t.merge || 'Merge',
+                    onPress: async () => {
+                        try {
+                            setIsDriveLoading(true);
+                            await syncFromDrive('merge');
+                            Alert.alert(t.success || 'Success', t.restoreComplete || 'Data restored successfully!');
+                        } catch (e) {
+                            Alert.alert('Error', 'Failed to restore backup');
+                        } finally {
+                            setIsDriveLoading(false);
+                        }
+                    }
+                },
+                {
+                    text: t.replace || 'Replace',
+                    style: 'destructive',
+                    onPress: async () => {
+                         try {
+                            setIsDriveLoading(true);
+                            await syncFromDrive('replace');
+                            Alert.alert(t.success || 'Success', t.restoreComplete || 'Data restored successfully!');
+                        } catch (e) {
+                            Alert.alert('Error', 'Failed to restore backup');
+                        } finally {
+                            setIsDriveLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    } catch (error) {
+        Alert.alert('Error', 'Failed to initiate restore');
+    } finally {
+        setIsDriveLoading(false);
+    }
+  };
 
   const handleExport = async () => {
     if (exportPreview.showCount === 0 && exportPreview.movieCount === 0) {
@@ -270,6 +395,74 @@ export default function SettingsScreen() {
 
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView showsVerticalScrollIndicator={false}>
+          
+          {/* Cloud Sync Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t.cloudSync || 'Google Sync'}</Text>
+            
+            {!googleUser ? (
+                <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleGoogleSignIn}
+                    disabled={isDriveLoading}
+                >
+                    <View style={[styles.iconContainer, { backgroundColor: '#4285F4' + '20' }]}>
+                        <Ionicons name="logo-google" size={22} color="#4285F4" />
+                    </View>
+                    <View style={styles.menuContent}>
+                        <Text style={styles.menuTitle}>{t.signInWithGoogle || 'Sign In with Google'}</Text>
+                        <Text style={styles.menuSubtitle}>{t.syncDescription || 'Sync your watchlist to Google Drive'}</Text>
+                    </View>
+                    {isDriveLoading ? (
+                        <ActivityIndicator size="small" color="#4285F4" />
+                    ) : (
+                        <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+                    )}
+                </TouchableOpacity>
+            ) : (
+                <View style={styles.statsCard}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                         {googleUser.picture ? (
+                           <Image source={{ uri: googleUser.picture }} style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }} />
+                         ) : (
+                           <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surfaceLight, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                             <Text style={{ color: Colors.textPrimary, fontWeight: 'bold' }}>{googleUser.name?.charAt(0)}</Text>
+                           </View>
+                         )}
+                         <View style={{ flex: 1 }}>
+                            <Text style={{ color: Colors.textPrimary, fontWeight: '600', fontSize: 16 }}>{googleUser.name}</Text>
+                            <Text style={{ color: Colors.textSecondary, fontSize: 12 }}>{googleUser.email}</Text>
+                         </View>
+                         <TouchableOpacity onPress={handleGoogleSignOut} style={{ padding: 8 }}>
+                            <Ionicons name="log-out-outline" size={24} color={Colors.error} />
+                         </TouchableOpacity>
+                    </View>
+                    
+                    <View style={{ gap: 10 }}>
+                        <TouchableOpacity 
+                            style={[styles.menuItem, { backgroundColor: Colors.surfaceLight, marginBottom: 0 }]}
+                            onPress={handleDriveBackup}
+                            disabled={isDriveLoading}
+                        >
+                            <Ionicons name="cloud-upload" size={20} color={Colors.success} />
+                            <Text style={[styles.menuTitle, { flex: 1, marginLeft: 12, fontSize: 14 }]}>{t.backupNow || 'Backup to Drive'}</Text>
+                            {isDriveLoading && <ActivityIndicator size="small" color={Colors.textMuted} />}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[styles.menuItem, { backgroundColor: Colors.surfaceLight, marginBottom: 0 }]}
+                            onPress={handleDriveRestore}
+                            disabled={isDriveLoading}
+                        >
+                            <Ionicons name="cloud-download" size={20} color={Colors.primary} />
+                             <Text style={[styles.menuTitle, { flex: 1, marginLeft: 12, fontSize: 14 }]}>{t.restoreNow || 'Restore from Drive'}</Text>
+                             {isDriveLoading && <ActivityIndicator size="small" color={Colors.textMuted} />}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
+          </View>
+
           {/* Data Management Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t.dataManagement}</Text>

@@ -10,6 +10,22 @@ export const strings = {
     tmdbAttribution: 'Data provided by The Movie Database',
     github: 'GitHub Repository',
     version: 'Version',
+    // Sync
+    cloudSync: 'Google Sync',
+    signInWithGoogle: 'Sign In with Google',
+    syncDescription: 'Sync your watchlist to Google Drive',
+    backupNow: 'Backup to Drive',
+    restoreNow: 'Restore from Drive',
+    signOut: 'Sign Out',
+    signOutConfirm: 'Are you sure you want to sign out?',
+    backupComplete: 'Backup successfully uploaded to Google Drive!',
+    noBackup: 'No Backup',
+    noBackupFound: 'No backup found in Google Drive.',
+    restoreBackup: 'Restore Backup',
+    restoreConfirm: 'Do you want to merge with existing data or replace it entirely?',
+    merge: 'Merge',
+    replace: 'Replace',
+    restoreComplete: 'Data restored successfully!',
     
     // Calendar
     calendar: 'Calendar',
@@ -231,6 +247,23 @@ export const strings = {
     tmdbAttribution: 'Δεδομένα από The Movie Database',
     github: 'Αποθετήριο GitHub',
     version: 'Έκδοση',
+    
+    // Sync
+    cloudSync: 'Συγχρονισμός Google',
+    signInWithGoogle: 'Σύνδεση με Google',
+    syncDescription: 'Συγχρονίστε τη λίστα σας στο Google Drive',
+    backupNow: 'Αντίγραφο στο Drive',
+    restoreNow: 'Επαναφορά από το Drive',
+    signOut: 'Αποσύνδεση',
+    signOutConfirm: 'Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;',
+    backupComplete: 'Το αντίγραφο ασφαλείας ανέβηκε επιτυχώς!',
+    noBackup: 'Κανένα Αντίγραφο',
+    noBackupFound: 'Δεν βρέθηκε αντίγραφο στο Google Drive.',
+    restoreBackup: 'Επαναφορά Αντιγράφου',
+    restoreConfirm: 'Θέλετε να συγχωνεύσετε ή να αντικαταστήσετε τα δεδομένα;',
+    merge: 'Συγχώνευση',
+    replace: 'Αντικατάσταση',
+    restoreComplete: 'Τα δεδομένα επαναφέρθηκαν επιτυχώς!',
 
     // Watch Providers
     whereToWatch: 'Πού να το δείτε',

@@ -12,7 +12,7 @@ import { useSettingsStore, useWatchlistStore } from '@/src/store';
 import { TrackedMovie, TrackedShow } from '@/src/types';
 
 // Export file format
-interface ExportData {
+export interface ExportData {
   version: string;
   exportedAt: string;
   app: string;
@@ -27,37 +27,44 @@ interface ExportData {
   };
 }
 
+
 const EXPORT_VERSION = '2.0.1';
 const APP_NAME = 'MediaTracker';
+
+/**
+ * Generate export data object
+ */
+export function generateExportData(): ExportData {
+  const { trackedShows, trackedMovies } = useWatchlistStore.getState();
+
+  // Calculate stats
+  const totalWatchedEpisodes = trackedShows.reduce(
+    (acc, show) => acc + show.watchedEpisodes.length,
+    0
+  );
+
+  return {
+    version: EXPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    app: APP_NAME,
+    data: {
+      trackedShows,
+      trackedMovies,
+    },
+    stats: {
+      totalShows: trackedShows.length,
+      totalMovies: trackedMovies.length,
+      totalWatchedEpisodes,
+    },
+  };
+}
 
 /**
  * Export watchlist data to a JSON file
  */
 export async function exportWatchlistData(): Promise<boolean> {
   try {
-    const { trackedShows, trackedMovies } = useWatchlistStore.getState();
-
-    // Calculate stats
-    const totalWatchedEpisodes = trackedShows.reduce(
-      (acc, show) => acc + show.watchedEpisodes.length,
-      0
-    );
-
-    // Create export object
-    const exportData: ExportData = {
-      version: EXPORT_VERSION,
-      exportedAt: new Date().toISOString(),
-      app: APP_NAME,
-      data: {
-        trackedShows,
-        trackedMovies,
-      },
-      stats: {
-        totalShows: trackedShows.length,
-        totalMovies: trackedMovies.length,
-        totalWatchedEpisodes,
-      },
-    };
+    const exportData = generateExportData();
 
     // Create filename with date
     const dateStr = new Date().toISOString().split('T')[0];
@@ -175,7 +182,7 @@ export async function importWatchlistData(): Promise<boolean> {
 /**
  * Merge imported data with existing data (no duplicates)
  */
-function mergeWatchlistData(
+export function mergeWatchlistData(
   importedShows: TrackedShow[],
   importedMovies: TrackedMovie[]
 ): void {
@@ -200,7 +207,7 @@ function mergeWatchlistData(
 /**
  * Replace all existing data with imported data
  */
-function replaceWatchlistData(
+export function replaceWatchlistData(
   importedShows: TrackedShow[],
   importedMovies: TrackedMovie[]
 ): void {
