@@ -1,10 +1,5 @@
-/**
- * Notification Store (Zustand)
- * Manages notification preferences and scheduled notifications
- */
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 

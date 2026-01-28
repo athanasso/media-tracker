@@ -9,8 +9,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQueries } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MovieItem from '../components/MovieItem';
 import ShowItem from '../components/ShowItem';
@@ -711,7 +712,7 @@ export default function ProfileScreen() {
               <Text style={styles.loadingText}>{t.loadingUpcomingShows}</Text>
             </View>
           ) : (
-              <FlatList
+              <FlashList
                 data={filteredShows}
                 keyExtractor={(item) => item.showId.toString()}
                 renderItem={(props) => showsSubTab === 'upcoming' 
@@ -719,11 +720,9 @@ export default function ProfileScreen() {
                   : renderShowItem(props)
                 }
                 contentContainerStyle={styles.listContent}
-                initialNumToRender={10}
-                maxToRenderPerBatch={10}
-                windowSize={10}
-                removeClippedSubviews={true}
-              ListEmptyComponent={
+                // @ts-ignore
+                estimatedItemSize={114}
+                ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Ionicons name="tv-outline" size={64} color={Colors.textSecondary} />
                   <Text style={styles.emptyText}>
@@ -757,15 +756,13 @@ export default function ProfileScreen() {
               <Text style={styles.loadingText}>{t.loadingUpcomingMovies}</Text>
             </View>
           ) : (
-            <FlatList
+            <FlashList
               data={filteredMovies}
               keyExtractor={(item) => item.movieId.toString()}
               renderItem={renderMovieItem}
               contentContainerStyle={styles.listContent}
-              initialNumToRender={10}
-              maxToRenderPerBatch={10}
-              windowSize={10}
-              removeClippedSubviews={true}
+              // @ts-ignore
+              estimatedItemSize={114}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Ionicons name="film-outline" size={64} color={Colors.textSecondary} />
@@ -800,7 +797,7 @@ export default function ProfileScreen() {
               <Text style={[styles.subTabText, favoritesSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
             </TouchableOpacity>
           </View>
-          <FlatList
+          <FlashList
             data={filteredFavorites}
             keyExtractor={(item, index) => {
               // Ensure unique keys
@@ -810,10 +807,8 @@ export default function ProfileScreen() {
             }}
             renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
             contentContainerStyle={styles.listContent}
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            windowSize={10}
-            removeClippedSubviews={true}
+            // @ts-ignore
+            estimatedItemSize={114}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="heart-outline" size={64} color={Colors.textSecondary} />
@@ -844,7 +839,7 @@ export default function ProfileScreen() {
               <Text style={[styles.subTabText, planSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
             </TouchableOpacity>
           </View>
-          <FlatList
+          <FlashList
             data={filteredPlanItems}
             keyExtractor={(item, index) => {
               // Ensure unique keys by combining type and id (index as fallback for safety)
@@ -855,10 +850,8 @@ export default function ProfileScreen() {
             }}
             renderItem={({ item }) => item.type === 'show' ? renderShowItem({ item: item as TrackedShow }) : renderMovieItem({ item: item as TrackedMovie })}
             contentContainerStyle={styles.listContent}
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            windowSize={10}
-            removeClippedSubviews={true}
+            // @ts-ignore
+            estimatedItemSize={114}
             ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="bookmark-outline" size={64} color={Colors.textSecondary} /><Text style={styles.emptyText}>{t.noPlanItems}</Text></View>}
           />
         </>

@@ -2,8 +2,10 @@ import { getPosterUrl } from '@/src/services/api/client';
 import { TrackedShow } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 import React, { memo } from 'react';
-import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface UpcomingShowItemProps {
     item: TrackedShow & { airDate: string; next_episode_to_air?: any };
@@ -39,11 +41,18 @@ const UpcomingShowItem = memo(({
     const hasNotif = hasNotification(item.showId, 'show');
 
     return (
-      <TouchableOpacity style={styles.itemCard} onPress={() => router.push(`/show/${item.showId}`)}>
+      <TouchableOpacity 
+        style={styles.itemCard} 
+        onPress={() => {
+            Haptics.selectionAsync();
+            router.push(`/show/${item.showId}`);
+        }}
+      >
         <Image
           source={{ uri: getPosterUrl(item.posterPath, 'small') || '' }}
           style={styles.itemPoster}
-          resizeMode="cover"
+          contentFit="cover"
+          transition={500}
         />
         <View style={styles.itemInfo}>
           <Text style={styles.itemTitle} numberOfLines={1}>
@@ -69,6 +78,7 @@ const UpcomingShowItem = memo(({
           style={styles.notificationButton}
           onPress={(e) => {
             e.stopPropagation();
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             onNotificationPress(item.showId, 'show', item.showName, date);
           }}
         >
@@ -81,7 +91,10 @@ const UpcomingShowItem = memo(({
         <TouchableOpacity 
             onPress={(e) => {
               e.stopPropagation();
-              Alert.alert(t.removeConfirm, '', [{ text: t.cancel }, { text: t.remove, onPress: () => onRemove(item.showId) }]);
+              Alert.alert(t.removeConfirm, '', [{ text: t.cancel }, { text: t.remove, onPress: () => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  onRemove(item.showId);
+              }}]);
             }}
           >
             <Ionicons name="trash-outline" size={20} color="#ef4444" />

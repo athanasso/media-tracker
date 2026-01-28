@@ -2,8 +2,10 @@ import { getPosterUrl } from '@/src/services/api/client';
 import { TrackedMovie, TrackingStatus } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 import React, { memo } from 'react';
-import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface MovieItemProps {
     item: TrackedMovie & { releaseDate?: string };
@@ -45,13 +47,27 @@ const MovieItem = memo(({
     const notifPref = item.releaseDate ? getNotificationPreference(item.movieId, 'movie') : undefined;
 
     return (
-      <TouchableOpacity style={styles.itemCard} onPress={() => router.push(`/movie/${item.movieId}`)}>
-        <Image source={{ uri: getPosterUrl(item.posterPath, 'small') || '' }} style={styles.itemPoster} />
+      <TouchableOpacity 
+        style={styles.itemCard} 
+        onPress={() => {
+            Haptics.selectionAsync();
+            router.push(`/movie/${item.movieId}`);
+        }}
+      >
+        <Image 
+            source={{ uri: getPosterUrl(item.posterPath, 'small') || '' }} 
+            style={styles.itemPoster} 
+            contentFit="cover"
+            transition={500}
+        />
         <View style={styles.itemInfo}>
           <Text style={styles.itemTitle} numberOfLines={2}>{item.movieTitle}</Text>
           <TouchableOpacity
             style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}
-            onPress={() => onStatusChange(item.movieId, 'movie', item.status)}
+            onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onStatusChange(item.movieId, 'movie', item.status);
+            }}
           >
             <Text style={styles.statusText}>
               {(activeTab === 'movies' && moviesSubTab === 'upcoming') ? t.upcoming :
@@ -78,6 +94,8 @@ const MovieItem = memo(({
             <TouchableOpacity
               onPress={(e) => {
                 e.stopPropagation();
+                e.stopPropagation();
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 onNotificationPress(item.movieId, 'movie', item.movieTitle, item.releaseDate!);
               }}
               style={styles.notificationButton}
@@ -92,7 +110,10 @@ const MovieItem = memo(({
           <TouchableOpacity 
             onPress={(e) => {
               e.stopPropagation();
-              Alert.alert(t.removeConfirm, '', [{ text: t.cancel }, { text: t.remove, onPress: () => onRemove(item.movieId) }]);
+              Alert.alert(t.removeConfirm, '', [{ text: t.cancel }, { text: t.remove, onPress: () => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  onRemove(item.movieId);
+              }}]);
             }}
           >
             <Ionicons name="trash-outline" size={20} color="#ef4444" />

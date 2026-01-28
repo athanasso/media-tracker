@@ -1,8 +1,3 @@
-/**
- * Watchlist Store (Zustand)
- * Global state management for tracking shows, movies, and watched episodes
- */
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
