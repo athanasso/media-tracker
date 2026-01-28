@@ -162,12 +162,29 @@ export default function ShowDetailsScreen() {
               });
             }
             
-            const seasonsToMark = seasons.map(s => ({
-              seasonNumber: s.season_number,
-              episodeCount: s.episode_count
-            }));
+            let seasonsToMark: { seasonNumber: number; episodeCount: number }[] = [];
+
+            if (show.last_episode_to_air) {
+                const lastEp = show.last_episode_to_air;
+                seasonsToMark = seasons.map(s => {
+                    if (s.season_number < lastEp.season_number) {
+                        return { seasonNumber: s.season_number, episodeCount: s.episode_count };
+                    } else if (s.season_number === lastEp.season_number) {
+                        return { seasonNumber: s.season_number, episodeCount: lastEp.episode_number };
+                    }
+                    return null;
+                }).filter((s): s is { seasonNumber: number; episodeCount: number } => s !== null);
+            } else if (show.status === 'Ended' || show.status === 'Canceled') {
+                // If it's ended but no last_episode info (rare), mark everything
+                seasonsToMark = seasons.map(s => ({
+                  seasonNumber: s.season_number,
+                  episodeCount: s.episode_count
+                }));
+            }
             
-            markShowWatched(showId, seasonsToMark);
+            if (seasonsToMark.length > 0) {
+                markShowWatched(showId, seasonsToMark);
+            }
           }
         }
       ]

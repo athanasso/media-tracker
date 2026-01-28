@@ -309,10 +309,21 @@ export default function ProfileScreen() {
     const isCaughtUp = (show: TrackedShow) => {
         const details = showDetailsMap.get(show.showId);
         if (show.status === 'completed') return true;
-        if (!details) return false;
+        // If details are loading, assume caught up to avoid "In Progress" clutter
+        if (!details) return true;
         
         const lastEpisode = details.last_episode_to_air;
         if (!lastEpisode) return true;
+
+        // If the "last" episode is actually in the future (or today, depending on preference, but strictly future is safer),
+        // treat it as caught up so it goes to Upcoming, not In Progress.
+        if (lastEpisode.air_date) {
+            const airDate = new Date(lastEpisode.air_date);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0); // Compare dates only
+            // If air date is in future, we are technically caught up on what is AVAILABLE
+            if (airDate > now) return true;
+        }
 
         return show.watchedEpisodes.some(
             e => e.seasonNumber === lastEpisode.season_number && e.episodeNumber === lastEpisode.episode_number
