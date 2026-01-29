@@ -64,6 +64,7 @@ Quick access to all your favorite content, filtered by:
 - Horizontal season selector with progress bars
 - Episode checkboxes for quick tracking
 - Pull-to-refresh on all screens
+- **Global Loading Indicator** - Non-intrusive, centered loading overlay during background operations
 - Smooth animations and transitions
 - Intuitive tab navigation
 
@@ -82,6 +83,7 @@ Quick access to all your favorite content, filtered by:
 
 ### 🌍 Localization & Regional Settings
 - **Multi-language Support** - Fully localized in English and Greek
+- **Regional Content** - Automatically detects your device region to provide accurate release dates and watch providers (e.g., specific to UK, US, GR)
 - **Date Formats** - Choose between European (DD/MM/YYYY), American (MM/DD/YYYY), or Custom formats
 - **Localized Content** - Movie/Show descriptions and titles automatically displayed in your selected language (via TMDB)
 
@@ -265,6 +267,7 @@ npm start          # Start Expo dev server
 npx expo run:android # Run on Android (Rebuild native code)
 npx expo run:ios     # Run on iOS (Rebuild native code)
 npm run lint       # Run ESLint
+npm run version    # Bump version and rebuild (requires scripts/change-version.js)
 ```
 
 ## 📄 API Endpoints Used

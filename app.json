@@ -2,7 +2,7 @@
   "expo": {
     "name": "Media Tracker",
     "slug": "media-tracker",
-    "version": "3.1.1",
+    "version": "3.2.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mediatracker",
