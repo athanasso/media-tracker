@@ -129,7 +129,9 @@ export default function SettingsScreen() {
 
   // Google Drive State
   const [googleUser, setGoogleUser] = useState<UserInfo | null>(null);
-  const [isDriveLoading, setIsDriveLoading] = useState(false);
+  const [isBackupLoading, setIsBackupLoading] = useState(false);
+  const [isRestoreLoading, setIsRestoreLoading] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   const { clearWatchlist, trackedShows, updateShowStatus } = useWatchlistStore();
   const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage, showDroppedTab, toggleShowDroppedTab, showBooks, toggleShowBooks, showManga, toggleShowManga, showFavorites, toggleShowFavorites } = useSettingsStore();
@@ -156,14 +158,14 @@ export default function SettingsScreen() {
 
   const handleGoogleSignIn = async () => {
     try {
-        setIsDriveLoading(true);
+        setIsAuthLoading(true);
         await startOAuthFlow();
         // Auth completes via deep link. The useFocusEffect will update state when app returns.
     } catch (error) {
         Alert.alert('Error', 'Failed to sign in with Google');
         console.error(error);
     } finally {
-        setIsDriveLoading(false);
+        setIsAuthLoading(false);
     }
   };
 
@@ -187,7 +189,7 @@ export default function SettingsScreen() {
 
   const handleDriveBackup = async () => {
     if (!googleUser) return;
-    setIsDriveLoading(true);
+    setIsBackupLoading(true);
     try {
         await uploadBackup();
         Alert.alert(t.success || 'Success', t.backupComplete || 'Backup successfully uploaded to Google Drive!');
@@ -195,13 +197,13 @@ export default function SettingsScreen() {
         Alert.alert('Error', 'Failed to upload backup to Google Drive');
         console.error(error);
     } finally {
-        setIsDriveLoading(false);
+        setIsBackupLoading(false);
     }
   };
 
   const handleDriveRestore = async () => {
     if (!googleUser) return;
-    setIsDriveLoading(true);
+    setIsRestoreLoading(true);
     try {
         // Check if backups exist
         try {
@@ -224,7 +226,7 @@ export default function SettingsScreen() {
                     text: t.merge || 'Merge',
                     onPress: async () => {
                         try {
-                            setIsDriveLoading(true);
+                            setIsRestoreLoading(true);
                             await syncFromDrive('merge');
                             
                             // Auto-scan
@@ -238,7 +240,7 @@ export default function SettingsScreen() {
                         } catch (e) {
                             Alert.alert('Error', 'Failed to restore backup');
                         } finally {
-                            setIsDriveLoading(false);
+                            setIsRestoreLoading(false);
                         }
                     }
                 },
@@ -247,7 +249,7 @@ export default function SettingsScreen() {
                     style: 'destructive',
                     onPress: async () => {
                          try {
-                            setIsDriveLoading(true);
+                            setIsRestoreLoading(true);
                             await syncFromDrive('replace');
                             
                             // Auto-scan
@@ -261,7 +263,7 @@ export default function SettingsScreen() {
                         } catch (e) {
                             Alert.alert('Error', 'Failed to restore backup');
                         } finally {
-                            setIsDriveLoading(false);
+                            setIsRestoreLoading(false);
                         }
                     }
                 }
@@ -270,7 +272,7 @@ export default function SettingsScreen() {
     } catch (error) {
         Alert.alert('Error', 'Failed to initiate restore');
     } finally {
-        setIsDriveLoading(false);
+        setIsRestoreLoading(false);
     }
   };
 
@@ -297,11 +299,17 @@ export default function SettingsScreen() {
     try {
         // Use direct store state to ensure we have latest data after import
         const currentTrackedShows = useWatchlistStore.getState().trackedShows;
-        const watchingShows = currentTrackedShows.filter(s => s.status !== 'completed' && s.status !== 'dropped');
+        // Filter out shows that are already completed, dropped, OR have no watched episodes
+        // If no episodes are watched, it can't be completed (optimization)
+        const watchingShows = currentTrackedShows.filter(s => 
+            s.status !== 'completed' && 
+            s.status !== 'dropped' && 
+            s.watchedEpisodes.length > 0
+        );
         
         // Process with a concurrency pool for maximum efficiency
-        // As soon as one request finishes, start the next one
-        const CONCURRENCY = 5;
+        // Increased concurrency to speed up large library scans
+        const CONCURRENCY = 15;
         const processing = new Set<Promise<void>>();
         
         for (const show of watchingShows) {
@@ -487,7 +495,7 @@ export default function SettingsScreen() {
                 <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleGoogleSignIn}
-                    disabled={isDriveLoading}
+                    disabled={isAuthLoading}
                 >
                     <View style={[styles.iconContainer, { backgroundColor: '#4285F4' + '20' }]}>
                         <Ionicons name="logo-google" size={22} color="#4285F4" />
@@ -496,7 +504,7 @@ export default function SettingsScreen() {
                         <Text style={styles.menuTitle}>{t.signInWithGoogle || 'Sign In with Google'}</Text>
                         <Text style={styles.menuSubtitle}>{t.syncDescription || 'Sync your watchlist to Google Drive'}</Text>
                     </View>
-                    {isDriveLoading ? (
+                    {isAuthLoading ? (
                         <ActivityIndicator size="small" color="#4285F4" />
                     ) : (
                         <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
@@ -525,21 +533,21 @@ export default function SettingsScreen() {
                         <TouchableOpacity 
                             style={[styles.menuItem, { backgroundColor: Colors.surfaceLight, marginBottom: 0 }]}
                             onPress={handleDriveBackup}
-                            disabled={isDriveLoading}
+                            disabled={isBackupLoading}
                         >
                             <Ionicons name="cloud-upload" size={20} color={Colors.success} />
                             <Text style={[styles.menuTitle, { flex: 1, marginLeft: 12, fontSize: 14 }]}>{t.backupNow || 'Backup to Drive'}</Text>
-                            {isDriveLoading && <ActivityIndicator size="small" color={Colors.textMuted} />}
+                            {isBackupLoading && <ActivityIndicator size="small" color={Colors.textMuted} />}
                         </TouchableOpacity>
 
                         <TouchableOpacity 
                             style={[styles.menuItem, { backgroundColor: Colors.surfaceLight, marginBottom: 0 }]}
                             onPress={handleDriveRestore}
-                            disabled={isDriveLoading}
+                            disabled={isRestoreLoading}
                         >
                             <Ionicons name="cloud-download" size={20} color={Colors.primary} />
                              <Text style={[styles.menuTitle, { flex: 1, marginLeft: 12, fontSize: 14 }]}>{t.restoreNow || 'Restore from Drive'}</Text>
-                             {isDriveLoading && <ActivityIndicator size="small" color={Colors.textMuted} />}
+                             {isRestoreLoading && <ActivityIndicator size="small" color={Colors.textMuted} />}
                         </TouchableOpacity>
                     </View>
                 </View>
