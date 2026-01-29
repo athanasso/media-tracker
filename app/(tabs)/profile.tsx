@@ -332,12 +332,32 @@ export default function ProfileScreen() {
       switch (sort) {
         case 'name':
           return getTitle(a).localeCompare(getTitle(b));
-        case 'date':
-          return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+        case 'date': // Air Date / Release Date
+          const getAirReleaseDate = (item: T) => {
+              if ('airDate' in item && typeof item.airDate === 'string') return item.airDate; // Custom prop from hooks
+              if ('releaseDate' in item && typeof item.releaseDate === 'string') return item.releaseDate; // Custom prop
+              // Fallback to addedAt if no air date available
+              return item.addedAt;
+          };
+          return new Date(getAirReleaseDate(b)).getTime() - new Date(getAirReleaseDate(a)).getTime();
+
         case 'status':
           return a.status.localeCompare(b.status);
-        case 'added':
-          return new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime();
+
+        case 'added': // Last Watched Date
+           const getLastWatched = (item: T) => {
+               // Shows: check recent episode
+               if ('watchedEpisodes' in item && Array.isArray(item.watchedEpisodes) && item.watchedEpisodes.length > 0) {
+                   // Sort to find max (most recent)
+                   const sorted = [...item.watchedEpisodes].sort((x, y) => new Date(y.watchedAt).getTime() - new Date(x.watchedAt).getTime());
+                   return sorted[0].watchedAt;
+               }
+               // Movies: if we tracked watchedAt (future feature?), else fallback to addedAt
+               if ('watchedAt' in item && typeof item.watchedAt === 'string') return item.watchedAt;
+               
+               return item.addedAt;
+           };
+           return new Date(getLastWatched(b)).getTime() - new Date(getLastWatched(a)).getTime();
         default:
           return 0;
       }
