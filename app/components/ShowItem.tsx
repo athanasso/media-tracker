@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import React, { memo } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 
 // Define Props for ShowItem
 interface ShowItemProps {
@@ -61,6 +61,13 @@ const ShowItem = memo(({
     const router = useRouter();
     // Using store hook inside component for specific data
     const watchedCount = useWatchlistStore(state => state.getWatchedEpisodesCount(item.showId));
+
+    const [isMarkingWatched, setIsMarkingWatched] = React.useState(false);
+    
+    // Reset loading state when the episode changes (meaning operation succeeded)
+    React.useEffect(() => {
+        setIsMarkingWatched(false);
+    }, [item.nextEpisode?.seasonNumber, item.nextEpisode?.episodeNumber]);
 
     const hasNotif = item.airDate ? hasNotification(item.showId, 'show') : false;
     const notifPref = item.airDate ? getNotificationPreference(item.showId, 'show') : undefined;
@@ -127,12 +134,21 @@ const ShowItem = memo(({
              <TouchableOpacity
                onPress={(e) => {
                  e.stopPropagation();
+                 setIsMarkingWatched(true);
                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                 onMarkEpisodeWatched(item.showId, item.nextEpisode!.seasonNumber, item.nextEpisode!.episodeNumber);
+                 // Delay slightly to allow UI update before heavy store operation if sync
+                 requestAnimationFrame(() => {
+                    onMarkEpisodeWatched(item.showId, item.nextEpisode!.seasonNumber, item.nextEpisode!.episodeNumber);
+                 });
                }}
                style={styles.actionButton}
+               disabled={isMarkingWatched}
              >
-               <Ionicons name="checkmark-circle-outline" size={24} color={Colors.success} />
+               {isMarkingWatched ? (
+                   <ActivityIndicator size="small" color={Colors.success} />
+               ) : (
+                   <Ionicons name="checkmark-circle-outline" size={24} color={Colors.success} />
+               )}
              </TouchableOpacity>
           )}
           {item.airDate && (
