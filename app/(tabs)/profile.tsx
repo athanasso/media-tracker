@@ -461,6 +461,7 @@ export default function ProfileScreen() {
             if (!details) return show;
 
             let totalEpisodes = 0;
+            let remainingEpisodes = 0;
             let nextEpisode: { seasonNumber: number; episodeNumber: number } | undefined;
             
             // Calculate total and find next episode
@@ -470,8 +471,24 @@ export default function ProfileScreen() {
                     .filter(s => s.season_number > 0) // Skip specials usually? Or keep them? Let's skip specials for "next" calculation for now unless watched
                     .sort((a, b) => a.season_number - b.season_number);
 
+                // Calculate total AIRED episodes based on last_episode_to_air
+                const lastAir = details.last_episode_to_air;
+                if (lastAir) {
+                    for (const season of sortedSeasons) {
+                         if (season.season_number < lastAir.season_number) {
+                            totalEpisodes += season.episode_count;
+                         } else if (season.season_number === lastAir.season_number) {
+                            // Ensure we don't exceed season count if API data is weird, but usually lastAir.episode_number is auth
+                            totalEpisodes += Math.min(season.episode_count, lastAir.episode_number);
+                         }
+                    }
+                } else if (details.status === 'Ended' || details.status === 'Canceled') {
+                     // If ended but lastAir missing (rare), assume all aired
+                     for (const season of sortedSeasons) totalEpisodes += season.episode_count;
+                }
+
                 for (const season of sortedSeasons) {
-                    totalEpisodes += season.episode_count;
+                    // totalEpisodes calculation moved to aired-logic above
                     
                     if (!nextEpisode) {
                         for (let i = 1; i <= season.episode_count; i++) {
@@ -498,6 +515,9 @@ export default function ProfileScreen() {
                 
                 // If it aired in the past OR today
                 if (apiNextEp.air_date <= todayStr) {
+                    // Update total count to include this newly aired episode
+                     totalEpisodes++;
+
                     const isWatched = show.watchedEpisodes.some(
                         e => e.seasonNumber === apiNextEp.season_number && e.episodeNumber === apiNextEp.episode_number
                     );
@@ -511,7 +531,10 @@ export default function ProfileScreen() {
                 }
             }
 
-            let remainingEpisodes = Math.max(0, totalEpisodes - show.watchedEpisodes.length);
+            // Calculate remaining episodes (Total Regular - Watched Regular)
+            const watchedRegularCount = show.watchedEpisodes.filter(e => e.seasonNumber > 0).length;
+            remainingEpisodes = Math.max(0, totalEpisodes - watchedRegularCount);
+
             // If we have a next episode to watch, but math says 0 remaining (due to stale totalEpisodes), force at least 1
             if (nextEpisode && remainingEpisodes === 0) {
                 remainingEpisodes = 1;
