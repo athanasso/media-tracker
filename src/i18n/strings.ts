@@ -57,6 +57,7 @@ export const strings = {
     importGenericError: 'An error occurred while importing. Please try again.',
     dataCleared: 'All data has been cleared.',
     importingTVTimeProgress: 'Importing from TV Time',
+    tvTimeImportSuccess: 'Import from TV Time successful!',
     searchingMatches: 'Searching TMDB for matches...',
     
     // TV Time Import Errors
@@ -213,6 +214,7 @@ export const strings = {
     markSeasonWatched: 'Mark Season Watched',
     markShowWatched: 'Mark All Watched',
     markShowWatchedConfirm: 'Mark all seasons as watched?',
+    markPreviousWatched: 'Mark Previous Watched',
     movieNotFound: 'Movie not found',
 
     // Stats Screen
@@ -238,6 +240,9 @@ export const strings = {
     movie: 'Movie',
     noItemsInList: 'No items in this list',
     drop: 'Drop',
+    scanCompletedShows: 'Scan for Completed Shows',
+    scanCompletedShowsSubtitle: 'Automatically mark shows as completed if all episodes are watched',
+    scanCompletedShowsSuccess: 'shows marked as completed',
     
     // Books & Manga
     books: 'Books',
@@ -472,6 +477,7 @@ export const strings = {
     markSeasonWatched: 'Ολοκλήρωση Σεζόν',
     markShowWatched: 'Ολοκλήρωση Σειράς',
     markShowWatchedConfirm: 'Ολοκλήρωση όλων των σεζόν;',
+    markPreviousWatched: 'Ολοκλήρωση Προηγούμενων',
     movieNotFound: 'Η ταινία δεν βρέθηκε',
 
     // Stats Screen
@@ -497,6 +503,10 @@ export const strings = {
     movie: 'Ταινία',
     noItemsInList: 'Δεν υπάρχουν αντικείμενα στη λίστα',
     drop: 'Διακοπή',
+    tvTimeImportSuccess: 'Η εισαγωγή από το TV Time ολοκληρώθηκε!',
+    scanCompletedShows: 'Έλεγχος Ολοκληρωμένων Σειρών',
+    scanCompletedShowsSubtitle: 'Αυτόματη ολοκλήρωση σειρών αν έχουν προβληθεί όλα τα επεισόδια',
+    scanCompletedShowsSuccess: 'σειρές ολοκληρώθηκαν',
     
     // Books & Manga
     books: 'Βιβλία',

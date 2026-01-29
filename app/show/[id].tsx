@@ -63,8 +63,7 @@ export default function ShowDetailsScreen() {
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
   const flatListRef = React.useRef<ScrollView>(null);
-
-
+  const lastScrolledSeason = React.useRef<number | null>(null);
 
   // Fetch Watch Providers
   const { data: watchProviders } = useQuery({
@@ -95,6 +94,7 @@ export default function ShowDetailsScreen() {
   const markEpisodeUnwatched = useWatchlistStore((state) => state.markEpisodeUnwatched);
   const markSeasonWatched = useWatchlistStore((state) => state.markSeasonWatched);
   const markShowWatched = useWatchlistStore((state) => state.markShowWatched);
+  const markEpisodesWatched = useWatchlistStore((state) => state.markEpisodesWatched);  
   const toggleShowFavorite = useWatchlistStore((state) => state.toggleShowFavorite);
   const updateShowStatus = useWatchlistStore((state) => state.updateShowStatus);
 
@@ -128,34 +128,105 @@ export default function ShowDetailsScreen() {
     return Math.round((watchedInSeason / totalEpisodes) * 100);
   };
 
-  // Scroll to relevant episode when episodes change
+   // Scroll to relevant episode when episodes change
   React.useEffect(() => {
     if (season?.episodes && season.episodes.length > 0) {
+       // Only scroll if we haven't processed this season yet
+       if (lastScrolledSeason.current === selectedSeason) return;
+
        // Check if any episode in this season is watched
-       const hasWatchedEpisodes = watchedEpisodes.some(e => e.seasonNumber === selectedSeason);
+       const watchedInSeason = watchedEpisodes.filter(e => e.seasonNumber === selectedSeason);
        
-       if (hasWatchedEpisodes) {
-           const today = new Date();
-           // Find last aired episode
-           const airedEpisodes = season.episodes.filter(e => e.air_date && new Date(e.air_date) <= today);
-           let targetIndex = 0;
+       if (watchedInSeason.length > 0) {
+           // If all episodes in season are watched, don't scroll
+           if (watchedInSeason.length >= season.episodes.length) {
+               lastScrolledSeason.current = selectedSeason;
+               return;
+           }
+
+           // Find the last watched episode number (max episode number)
+           const lastWatchedEpNum = Math.max(...watchedInSeason.map(e => e.episodeNumber));
            
-           if (airedEpisodes.length > 0) {
-               targetIndex = Math.max(0, airedEpisodes.length - 1 - 2); // Latest aired - 2
-               // Ensure it doesn't go below 0
-               targetIndex = Math.max(0, targetIndex);
+           // Find index of this episode in the list
+           // Note: episodes are usually sorted 1..N, but safest to findIndex
+           const episodeIndex = season.episodes.findIndex(e => e.episode_number === lastWatchedEpNum);
+           
+           let targetIndex = 0;
+           if (episodeIndex !== -1) {
+                // Scroll to 2 episodes before the last watched one for context
+                targetIndex = Math.max(0, episodeIndex - 2); 
            }
 
            // Small timeout to ensure layout is ready
            setTimeout(() => {
                 if (flatListRef.current) {
-                    // Assuming fixed height of 80 per item (including margin/padding if any)
                     flatListRef.current.scrollTo({ y: targetIndex * 80, animated: true });
                 }
            }, 500);
        }
+       
+       // Mark this season as processed for scrolling
+       lastScrolledSeason.current = selectedSeason;
     }
   }, [season, selectedSeason, watchedEpisodes]);
+
+  // Auto-update status to 'completed' if all episodes watched
+  React.useEffect(() => {
+    if (isTracked && isFullyWatched && trackedShow?.status !== 'completed' && trackedShow?.status !== 'dropped') {
+        updateShowStatus(showId, 'completed');
+    }
+  }, [isTracked, isFullyWatched, trackedShow?.status, updateShowStatus, showId]);
+
+  // Handle Mark Previous Watched
+  const handleMarkPreviousWatched = useCallback((currentEpisode: Episode) => {
+      Alert.alert(
+          t.markPreviousWatched,
+          `${t.markPreviousWatched}?`,
+          [
+              { text: t.cancel, style: 'cancel' },
+              {
+                  text: t.confirm,
+                  onPress: () => {
+                      // 1. Mark previous seasons as completely watched
+                      const previousSeasons = seasons
+                          .filter(s => s.season_number < currentEpisode.season_number)
+                          .map(s => ({ seasonNumber: s.season_number, episodeCount: s.episode_count }));
+                      
+                      if (previousSeasons.length > 0) {
+                          markShowWatched(showId, previousSeasons, false);
+                      }
+
+                      // 2. Mark episodes in current season up to current episode
+                      if (season?.episodes) {
+                          const episodesToMark = season.episodes
+                              .filter(e => e.episode_number <= currentEpisode.episode_number)
+                              .map(e => ({
+                                  showId,
+                                  seasonNumber: e.season_number,
+                                  episodeNumber: e.episode_number,
+                                  episodeId: e.id,
+                              }));
+                          
+                          if (episodesToMark.length > 0) {
+                              markEpisodesWatched(showId, episodesToMark);
+                          }
+                      }
+                      
+                      // Ensure show is tracked
+                      if (!isTracked && show) {
+                        addShow({
+                            showId,
+                            showName: show.name,
+                            posterPath: show.poster_path,
+                            genres: show.genres,
+                            episodeRunTime: show.episode_run_time,
+                        });
+                      }
+                  }
+              }
+          ]
+      );
+  }, [showId, seasons, season, t, markShowWatched, markEpisodesWatched, isTracked, show, addShow]);
 
   // Toggle show tracking
   const handleToggleTracking = useCallback(() => {
@@ -627,6 +698,8 @@ export default function ShowDetailsScreen() {
                             { height: 80 } // Force fixed height for consistent scrolling
                             ]}
                             onPress={() => hasAired && handleToggleEpisode(episode)}
+                            onLongPress={() => hasAired && handleMarkPreviousWatched(episode)}
+                            delayLongPress={500}
                             disabled={!hasAired}
                         >
                             <View style={styles.episodeMain}>

@@ -125,12 +125,13 @@ export default function SettingsScreen() {
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [selectedPending, setSelectedPending] = useState<Set<number>>(new Set());
   const [detailsItem, setDetailsItem] = useState<PendingImportItem | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   // Google Drive State
   const [googleUser, setGoogleUser] = useState<UserInfo | null>(null);
   const [isDriveLoading, setIsDriveLoading] = useState(false);
 
-  const { clearWatchlist } = useWatchlistStore();
+  const { clearWatchlist, trackedShows, updateShowStatus } = useWatchlistStore();
   const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage, showDroppedTab, toggleShowDroppedTab, showBooks, toggleShowBooks, showManga, toggleShowManga, showFavorites, toggleShowFavorites } = useSettingsStore();
   
   const t = strings[language] || strings.en;
@@ -271,10 +272,57 @@ export default function SettingsScreen() {
     }
   };
 
+  const scanForCompletedShows = async (): Promise<number> => {
+    setIsScanning(true);
+    let completedCount = 0;
+    
+    try {
+        // Use direct store state to ensure we have latest data after import
+        const currentTrackedShows = useWatchlistStore.getState().trackedShows;
+        const watchingShows = currentTrackedShows.filter(s => s.status !== 'completed' && s.status !== 'dropped');
+        
+        // Process sequentially to be nice to API
+        for (const show of watchingShows) {
+            try {
+                // Fetch full details to get total episodes
+                const details = await getShowDetails(show.showId);
+                // Calculate total episodes
+                const totalEpisodes = (details.seasons || [])
+                    .filter((s:any) => s.season_number > 0)
+                    .reduce((acc:number, s:any) => acc + s.episode_count, 0);
+                
+                // Compare with watched count
+                const watchedCount = show.watchedEpisodes.length;
+                
+                if (watchedCount > 0 && watchedCount >= totalEpisodes && totalEpisodes > 0) {
+                    updateShowStatus(show.showId, 'completed');
+                    completedCount++;
+                }
+            } catch (e) {
+                console.warn(`Failed to check completion for show ${show.showId}`, e);
+            }
+        }
+        return completedCount;
+    } catch (e) {
+        console.error('Scan failed', e);
+        return 0;
+    } finally {
+        setIsScanning(false);
+    }
+  };
+
   const handleImport = async () => {
     setIsImporting(true);
     try {
-      await importWatchlistData();
+      const success = await importWatchlistData();
+      if (success) {
+          const completedCount = await scanForCompletedShows();
+          if (completedCount > 0) {
+              Alert.alert(t.success || 'Success', `${t.importComplete || 'Import successful'}\n\n${completedCount} ${t.scanCompletedShowsSuccess}`);
+          } else {
+              Alert.alert(t.success || 'Success', t.importComplete || 'Import successful');
+          }
+      }
     } finally {
       setIsImporting(false);
     }
@@ -292,6 +340,9 @@ export default function SettingsScreen() {
         setTVTimeProgress({ current, total, title });
       });
 
+      // Auto-scan for completed shows after import
+      const completedCount = await scanForCompletedShows();
+
       setIsTVTimeImporting(false);
 
       if (result.pending.length > 0 || result.failed.length > 0) {
@@ -300,20 +351,18 @@ export default function SettingsScreen() {
         // Select all pending by default
         setSelectedPending(new Set(result.pending.map((_, i) => i)));
         setShowPendingModal(true);
-      } else if (result.shows > 0 || result.movies > 0) {
-        let message = t.importSuccessBody
-          .replace('{shows}', result.shows.toString())
-          .replace('{movies}', result.movies.toString());
-        Alert.alert(t.importComplete, message);
       } else {
-        Alert.alert(t.importFailed, t.noData);
+         let msg = t.tvTimeImportSuccess || 'Import successful';
+         if (completedCount > 0) {
+             msg += `\n\n${completedCount} ${t.scanCompletedShowsSuccess}`;
+         }
+         Alert.alert(t.success || 'Success', msg);
       }
-    } catch {
-      setIsTVTimeImporting(false);
-      Alert.alert(t.importFailed, t.importGenericError);
+    } catch (error) {
+       setIsTVTimeImporting(false);
+       Alert.alert(t.error || 'Error', t.importGenericError || 'Import failed');
     } finally {
-      // Allow screen to sleep again
-      deactivateKeepAwake('tvtime-import');
+       await deactivateKeepAwake('tvtime-import');
     }
   };
 
@@ -555,6 +604,8 @@ export default function SettingsScreen() {
                 <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
               )}
             </TouchableOpacity>
+
+
 
             {/* Clear Data Button */}
             <TouchableOpacity

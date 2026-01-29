@@ -34,8 +34,9 @@ interface WatchlistState {
   markEpisodeWatched: (episode: Omit<WatchedEpisode, 'watchedAt'>) => void;
   markEpisodeUnwatched: (showId: number, seasonNumber: number, episodeNumber: number) => void;
   markSeasonWatched: (showId: number, seasonNumber: number, episodes: Omit<WatchedEpisode, 'watchedAt'>[]) => void;
+  markEpisodesWatched: (showId: number, episodes: Omit<WatchedEpisode, 'watchedAt'>[]) => void;
   markSeasonUnwatched: (showId: number, seasonNumber: number) => void;
-  markShowWatched: (showId: number, seasons: { seasonNumber: number; episodeCount: number }[]) => void;
+  markShowWatched: (showId: number, seasons: { seasonNumber: number; episodeCount: number }[], markAsCompleted?: boolean) => void;
   isEpisodeWatched: (showId: number, seasonNumber: number, episodeNumber: number) => boolean;
   getWatchedEpisodesCount: (showId: number) => number;
   getSeasonProgress: (showId: number, seasonNumber: number, totalEpisodes: number) => number;
@@ -253,6 +254,40 @@ export const useWatchlistStore = create<WatchlistState>()(
         }));
       },
 
+      markEpisodesWatched: (showId, episodes) => {
+        const state = get();
+        const show = state.trackedShows.find((s) => s.showId === showId);
+        if (!show) return;
+
+        const newEpisodes = episodes.filter(
+          (ep) =>
+            !show.watchedEpisodes.some(
+              (we) =>
+                we.seasonNumber === ep.seasonNumber &&
+                we.episodeNumber === ep.episodeNumber
+            )
+        );
+
+        if (newEpisodes.length === 0) return;
+
+        const watchedEpisodes: WatchedEpisode[] = newEpisodes.map((ep) => ({
+          ...ep,
+          watchedAt: new Date().toISOString(),
+        }));
+
+        set((state) => ({
+          trackedShows: state.trackedShows.map((s) =>
+            s.showId === showId
+              ? {
+                  ...s,
+                  watchedEpisodes: [...s.watchedEpisodes, ...watchedEpisodes],
+                  status: (s.status === 'plan_to_watch' || s.status === 'dropped') ? 'watching' : s.status,
+                }
+              : s
+          ),
+        }));
+      },
+
       markSeasonUnwatched: (showId, seasonNumber) => {
         set((state) => ({
           trackedShows: state.trackedShows.map((show) => {
@@ -265,7 +300,7 @@ export const useWatchlistStore = create<WatchlistState>()(
             let newStatus = show.status;
             if (newWatchedEpisodes.length === 0) {
               newStatus = 'plan_to_watch';
-            } else if (show.status === 'completed') {
+            } else if (show.status === 'completed' && newWatchedEpisodes.length > 0) {
               newStatus = 'watching';
             }
 
@@ -278,31 +313,50 @@ export const useWatchlistStore = create<WatchlistState>()(
         }));
       },
 
-      markShowWatched: (showId, seasons) => {
+      markShowWatched: (showId, seasons, markAsCompleted = true) => {
         set((state) => ({
           trackedShows: state.trackedShows.map((show) => {
             if (show.showId !== showId) return show;
 
-            // Generate all episodes
-            const allEpisodes: WatchedEpisode[] = [];
-            const timestamp = new Date().toISOString();
+            // Use a Map to deduplicate by season-episode key, preserving existing entries (with potential real IDs)
+            const episodeMap = new Map<string, WatchedEpisode>();
+            
+            // 1. Load existing episodes
+            show.watchedEpisodes.forEach((ep) => {
+                episodeMap.set(`${ep.seasonNumber}-${ep.episodeNumber}`, ep);
+            });
 
+            // 2. Add new episodes from the requested seasons
+            const timestamp = new Date().toISOString();
             seasons.forEach((season) => {
               for (let i = 1; i <= season.episodeCount; i++) {
-                allEpisodes.push({
-                  showId,
-                  seasonNumber: season.seasonNumber,
-                  episodeNumber: i,
-                  episodeId: -1, // Dummy ID as we don't fetch all details
-                  watchedAt: timestamp,
-                });
+                const key = `${season.seasonNumber}-${i}`;
+                if (!episodeMap.has(key)) {
+                    episodeMap.set(key, {
+                        showId,
+                        seasonNumber: season.seasonNumber,
+                        episodeNumber: i,
+                        episodeId: -1, // Dummy ID
+                        watchedAt: timestamp,
+                    });
+                }
               }
             });
 
+            // Determine new status
+            // If explicit complete requested -> completed
+            // If not, and we are adding progress -> ensure 'watching' (unless already completed)
+            let newStatus = show.status;
+            if (markAsCompleted) {
+                newStatus = 'completed';
+            } else if (newStatus === 'plan_to_watch' || newStatus === 'dropped') {
+                newStatus = 'watching';
+            }
+
             return {
               ...show,
-              watchedEpisodes: allEpisodes,
-              status: 'completed',
+              watchedEpisodes: Array.from(episodeMap.values()),
+              status: newStatus,
             };
           }),
         }));
