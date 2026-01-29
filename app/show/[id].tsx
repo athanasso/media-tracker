@@ -21,6 +21,7 @@ import {
     Text,
     TouchableOpacity,
     View,
+    FlatList,
 } from 'react-native';
 
 import { useShowDetails } from '@/src/hooks/useShowDetails';
@@ -61,6 +62,9 @@ export default function ShowDetailsScreen() {
   
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
+  const flatListRef = React.useRef<ScrollView>(null);
+
+
 
   // Fetch Watch Providers
   const { data: watchProviders } = useQuery({
@@ -123,6 +127,30 @@ export default function ShowDetailsScreen() {
     const watchedInSeason = watchedEpisodes.filter((e) => e.seasonNumber === seasonNum).length;
     return Math.round((watchedInSeason / totalEpisodes) * 100);
   };
+
+  // Scroll to relevant episode when episodes change
+  React.useEffect(() => {
+    if (season?.episodes && season.episodes.length > 0) {
+       const today = new Date();
+       // Find last aired episode
+       const airedEpisodes = season.episodes.filter(e => e.air_date && new Date(e.air_date) <= today);
+       let targetIndex = 0;
+       
+       if (airedEpisodes.length > 0) {
+           targetIndex = Math.max(0, airedEpisodes.length - 1 - 2); // Latest aired - 2
+           // Ensure it doesn't go below 0
+           targetIndex = Math.max(0, targetIndex);
+       }
+
+       // Small timeout to ensure layout is ready
+       setTimeout(() => {
+            if (flatListRef.current) {
+                // Assuming fixed height of 80 per item (including margin/padding if any)
+                flatListRef.current.scrollTo({ y: targetIndex * 80, animated: true });
+            }
+       }, 500);
+    }
+  }, [season, selectedSeason]);
 
   // Toggle show tracking
   const handleToggleTracking = useCallback(() => {
@@ -574,52 +602,59 @@ export default function ShowDetailsScreen() {
             </View>
           ) : (
             <View style={styles.episodesList}>
-              {episodes.map((episode: Episode) => {
-                const isWatched = checkEpisodeWatched(episode.season_number, episode.episode_number);
-                const hasAired = episode.air_date ? new Date(episode.air_date) <= new Date() : false;
-                
-                return (
-                  <Pressable
-                    key={episode.id}
-                    style={({ pressed }) => [
-                      styles.episodeCard,
-                      pressed && styles.episodeCardPressed,
-                      isWatched && styles.episodeCardWatched,
-                    ]}
-                    onPress={() => hasAired && handleToggleEpisode(episode)}
-                    disabled={!hasAired}
-                  >
-                    {/* Episode Thumbnail */}
-                    <View style={styles.episodeMain}>
-                    <View style={styles.episodeNumber}>
-                      <Text style={styles.episodeNumberText}>{episode.episode_number}</Text>
-                    </View>
-                    <View style={styles.episodeInfo}>
-                      <Text style={styles.episodeTitle}>{episode.name}</Text>
-                      {episode.air_date && (
-                        <Text style={styles.episodeDate}>{getFormattedDate(episode.air_date)}</Text>
-                      )}
-                    </View>
-                    <TouchableOpacity
-                      style={[
-                        styles.watchedCheckbox,
-                        isWatched && styles.watchedCheckboxActive,
-                        !hasAired && styles.watchedCheckboxDisabled,
-                      ]}
-                      onPress={() => hasAired && handleToggleEpisode(episode)}
-                      disabled={!hasAired}
-                      activeOpacity={0.7}
-                    >
-                      {isWatched ? (
-                        <Ionicons name="checkmark" size={18} color={Colors.text} />
-                      ) : (
-                        <View style={styles.checkboxEmpty} />
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                  </Pressable>
-                );
-              })}
+              <ScrollView
+                ref={flatListRef}
+                nestedScrollEnabled={true}
+                style={{ height: 400 }}
+                showsVerticalScrollIndicator={true}
+              >
+                {episodes.map((episode: Episode, index) => {
+                    const isWatched = checkEpisodeWatched(episode.season_number, episode.episode_number);
+                    const hasAired = episode.air_date ? new Date(episode.air_date) <= new Date() : false;
+
+                    return (
+                        <Pressable
+                            key={episode.id}
+                            style={({ pressed }) => [
+                            styles.episodeCard,
+                            pressed && styles.episodeCardPressed,
+                            isWatched && styles.episodeCardWatched,
+                            { height: 80 } // Force fixed height for consistent scrolling
+                            ]}
+                            onPress={() => hasAired && handleToggleEpisode(episode)}
+                            disabled={!hasAired}
+                        >
+                            <View style={styles.episodeMain}>
+                                <View style={styles.episodeNumber}>
+                                <Text style={styles.episodeNumberText}>{episode.episode_number}</Text>
+                                </View>
+                                <View style={styles.episodeInfo}>
+                                <Text style={styles.episodeTitle} numberOfLines={1}>{episode.name}</Text>
+                                {episode.air_date && (
+                                    <Text style={styles.episodeDate}>{getFormattedDate(episode.air_date)}</Text>
+                                )}
+                                </View>
+                                <TouchableOpacity
+                                style={[
+                                    styles.watchedCheckbox,
+                                    isWatched && styles.watchedCheckboxActive,
+                                    !hasAired && styles.watchedCheckboxDisabled,
+                                ]}
+                                onPress={() => hasAired && handleToggleEpisode(episode)}
+                                disabled={!hasAired}
+                                activeOpacity={0.7}
+                                >
+                                {isWatched ? (
+                                    <Ionicons name="checkmark" size={18} color={Colors.text} />
+                                ) : (
+                                    <View style={styles.checkboxEmpty} />
+                                )}
+                                </TouchableOpacity>
+                            </View>
+                        </Pressable>
+                    );
+                })}
+              </ScrollView>
             </View>
           )}
         </View>
