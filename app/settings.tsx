@@ -226,7 +226,15 @@ export default function SettingsScreen() {
                         try {
                             setIsDriveLoading(true);
                             await syncFromDrive('merge');
-                            Alert.alert(t.success || 'Success', t.restoreComplete || 'Data restored successfully!');
+                            
+                            // Auto-scan
+                            const completedCount = await scanForCompletedShows();
+                            
+                            let msg = t.restoreComplete || 'Data restored successfully!';
+                            if (completedCount > 0) {
+                                msg += `\n\n${completedCount} ${t.scanCompletedShowsSuccess}`;
+                            }
+                            Alert.alert(t.success || 'Success', msg);
                         } catch (e) {
                             Alert.alert('Error', 'Failed to restore backup');
                         } finally {
@@ -241,7 +249,15 @@ export default function SettingsScreen() {
                          try {
                             setIsDriveLoading(true);
                             await syncFromDrive('replace');
-                            Alert.alert(t.success || 'Success', t.restoreComplete || 'Data restored successfully!');
+                            
+                            // Auto-scan
+                            const completedCount = await scanForCompletedShows();
+                            
+                            let msg = t.restoreComplete || 'Data restored successfully!';
+                            if (completedCount > 0) {
+                                msg += `\n\n${completedCount} ${t.scanCompletedShowsSuccess}`;
+                            }
+                            Alert.alert(t.success || 'Success', msg);
                         } catch (e) {
                             Alert.alert('Error', 'Failed to restore backup');
                         } finally {
