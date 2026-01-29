@@ -6,6 +6,7 @@
 import { useSettingsStore } from '@/src/store/useSettingsStore';
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { TMDBErrorResponse } from '../../types';
+import { getLocales } from 'expo-localization';
 
 // ============================================
 // CONSTANTS
@@ -71,11 +72,16 @@ const createApiClient = (): AxiosInstance => {
 
       const language = useSettingsStore.getState().language;
 
+      // Determine region from device settings using expo-localization
+      // Fallback to 'US' if detection fails
+      const region = getLocales()[0]?.regionCode || 'US'; 
+
       // Add API key as query parameter (v3 auth)
       config.params = {
         ...config.params,
         api_key: apiKey,
         language: language,
+        region: region,
       };
 
       // Optional: Add Bearer token for v4 auth
