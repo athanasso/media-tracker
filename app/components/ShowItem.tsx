@@ -121,9 +121,11 @@ const ShowItem = memo(({
                 <Text style={styles.progressText}>
                     {watchedCount} {t.episodesWatched}
                 </Text>
-                {activeTab === 'shows' && showsSubTab === 'in_progress' && item.remainingEpisodes !== undefined && (
+                {activeTab === 'shows' && showsSubTab === 'in_progress' && (
                     <Text style={styles.remainingText}>
-                        {item.remainingEpisodes} {t.left || 'left'}
+                        {item.remainingEpisodes !== undefined ? `${item.remainingEpisodes} ${t.left || 'left'}` : ''}
+                        {item.remainingEpisodes !== undefined && item.nextEpisode ? ' • ' : ''}
+                        {item.nextEpisode ? `S${item.nextEpisode.seasonNumber}E${item.nextEpisode.episodeNumber}` : ''}
                     </Text>
                 )}
             </>
