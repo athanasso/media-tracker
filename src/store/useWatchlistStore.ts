@@ -25,6 +25,7 @@ interface WatchlistState {
   addShow: (show: Omit<TrackedShow, 'addedAt' | 'watchedEpisodes' | 'status'>) => void;
   removeShow: (showId: number) => void;
   updateShowStatus: (showId: number, status: TrackingStatus) => void;
+  bulkUpdateShowStatus: (updates: { showId: number; status: TrackingStatus }[]) => void;
   isShowTracked: (showId: number) => boolean;
   getTrackedShow: (showId: number) => TrackedShow | undefined;
   toggleShowFavorite: (showId: number) => void;
@@ -126,6 +127,21 @@ export const useWatchlistStore = create<WatchlistState>()(
             show.showId === showId ? { ...show, status } : show
           ),
         }));
+      },
+
+      bulkUpdateShowStatus: (updates) => {
+        set((state) => {
+           const updateMap = new Map(updates.map(u => [u.showId, u.status]));
+            // Only update if there are changes
+           if (updateMap.size === 0) return state;
+           
+           return {
+               trackedShows: state.trackedShows.map((show) => {
+                    const newStatus = updateMap.get(show.showId);
+                    return newStatus ? { ...show, status: newStatus } : show;
+               })
+           };
+        });
       },
 
       isShowTracked: (showId) => {

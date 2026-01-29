@@ -132,10 +132,17 @@ export const getShowDetails = async (
   showId: number,
   appendToResponse?: string[]
 ): Promise<ShowDetailsResponse> => {
+  const params: any = {};
+  if (appendToResponse !== undefined) {
+    if (appendToResponse.length > 0) {
+      params.append_to_response = appendToResponse.join(',');
+    }
+  } else {
+    params.append_to_response = 'credits,similar,videos';
+  }
+
   const response = await apiClient.get<ShowDetailsResponse>(`/tv/${showId}`, {
-    params: {
-      append_to_response: appendToResponse?.join(',') || 'credits,similar,videos',
-    },
+    params,
   });
   return response.data;
 };

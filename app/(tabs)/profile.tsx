@@ -63,7 +63,7 @@ export default function ProfileScreen() {
     trackedShows, trackedMovies, trackedBooks, trackedManga,
     removeShow, removeMovie, removeBook, removeManga,
     getWatchedEpisodesCount, updateShowStatus, updateMovieStatus, updateBookStatus, updateBookProgress, updateMangaStatus, updateMangaProgress,
-    markEpisodeWatched, updateShowDetails, updateMovieDetails
+    markEpisodeWatched, updateShowDetails, updateMovieDetails, bulkUpdateShowStatus
   } = useWatchlistStore();
   const { 
     addNotification, 
@@ -346,6 +346,51 @@ export default function ProfileScreen() {
     return sorted;
   };
 
+  // Auto-update status for Returning Series that have new episodes
+  useEffect(() => {
+    if (!showDetailsQueries.data) return;
+    
+    const updates: { showId: number; status: 'watching' }[] = [];
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    showDetailsQueries.data.forEach(details => {
+         const show = trackedShows.find(s => s.showId === details.id);
+         if (!show || show.status !== 'completed') return;
+         
+         // Check if new episodes are available
+         const lastEpisode = details.last_episode_to_air;
+         if (!lastEpisode) return;
+         
+         let hasUnwatched = false;
+         
+         // Check if we watched the last officially aired episode
+         const watchedLast = show.watchedEpisodes.some(
+            e => e.seasonNumber === lastEpisode.season_number && e.episodeNumber === lastEpisode.episode_number
+         );
+         
+         if (!watchedLast) {
+             hasUnwatched = true;
+         } else {
+             // Check next episode if it has newly aired
+             const nextEpisode = details.next_episode_to_air;
+             if (nextEpisode && nextEpisode.air_date && nextEpisode.air_date <= todayStr) {
+                 const watchedNext = show.watchedEpisodes.some(
+                    e => e.seasonNumber === nextEpisode.season_number && e.episodeNumber === nextEpisode.episode_number
+                 );
+                 if (!watchedNext) hasUnwatched = true;
+             }
+         }
+         
+         if (hasUnwatched) {
+             updates.push({ showId: show.showId, status: 'watching' });
+         }
+    });
+
+    if (updates.length > 0) {
+        bulkUpdateShowStatus(updates);
+    }
+  }, [showDetailsQueries.data, trackedShows, bulkUpdateShowStatus]);
+
   // Get filtered and sorted shows
   const filteredShows = useMemo(() => {
     let shows: (TrackedShow & { 
@@ -367,27 +412,16 @@ export default function ProfileScreen() {
         
         const lastEpisode = details.last_episode_to_air;
         if (!lastEpisode) return true;
+        if (!lastEpisode) return true; // No episodes aired yet?
 
-        // If the "last" episode is actually in the future (or today, depending on preference, but strictly future is safer),
-        // treat it as caught up so it goes to Upcoming, not In Progress.
-        if (lastEpisode.air_date) {
-            const airDate = new Date(lastEpisode.air_date);
-            const now = new Date();
-            now.setHours(0, 0, 0, 0); // Compare dates only
-            // If air date is in future, we are technically caught up on what is AVAILABLE
-            if (airDate > now) return true;
-        }
-
-        // Check next episode too: if cached data says "next" is yesterday, it's actually released
+        // Check "next" episode: if cached data says "next" is yesterday/today, it's actually released
         const nextEpisode = details.next_episode_to_air;
         if (nextEpisode && nextEpisode.air_date) {
-            const nextAirDate = new Date(nextEpisode.air_date);
-            nextAirDate.setHours(0, 0, 0, 0);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            // If "next" episode has already aired (e.g. yesterday), check if we watched IT
-            if (nextAirDate < today) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            // If "next" episode has already aired (or airs today)
+            // String comparison works for ISO dates: "2024-05-20" <= "2024-05-21"
+            if (nextEpisode.air_date <= todayStr) {
                 const watchedNext = show.watchedEpisodes.some(
                     e => e.seasonNumber === nextEpisode.season_number && e.episodeNumber === nextEpisode.episode_number
                 );
@@ -395,6 +429,7 @@ export default function ProfileScreen() {
             }
         }
 
+        // Check if we watched the last officially aired episode
         return show.watchedEpisodes.some(
             e => e.seasonNumber === lastEpisode.season_number && e.episodeNumber === lastEpisode.episode_number
         );
@@ -402,7 +437,9 @@ export default function ProfileScreen() {
 
     if (showsSubTab === 'watched') {
       shows = trackedShows.filter(s => {
-          if (s.status === 'completed') return true;
+          if (s.status === 'completed') {
+              return isCaughtUp(s);
+          }
           if (s.status === 'watching') {
               return isCaughtUp(s);
           }
@@ -412,6 +449,9 @@ export default function ProfileScreen() {
       shows = trackedShows
         .filter(s => {
           if (s.status === 'watching') {
+              return !isCaughtUp(s);
+          }
+          if (s.status === 'completed') {
               return !isCaughtUp(s);
           }
           return false;
@@ -451,14 +491,13 @@ export default function ProfileScreen() {
             }
 
             // Fallback: Check if "next_episode_to_air" is actually a released episode that we missed 
-            // (e.g. new season not in seasons list yet, or cache is slightly stale vs proper season details)
+            //String comparison optimization
             const apiNextEp = details.next_episode_to_air;
             if (apiNextEp && apiNextEp.air_date) {
-                const nextAirDate = new Date(apiNextEp.air_date);
-                nextAirDate.setHours(0, 0, 0, 0);
+                const todayStr = new Date().toISOString().split('T')[0];
                 
-                // If it aired in the past (released)
-                if (nextAirDate < today) {
+                // If it aired in the past OR today
+                if (apiNextEp.air_date <= todayStr) {
                     const isWatched = show.watchedEpisodes.some(
                         e => e.seasonNumber === apiNextEp.season_number && e.episodeNumber === apiNextEp.episode_number
                     );

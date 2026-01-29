@@ -171,11 +171,11 @@ export default function ShowDetailsScreen() {
   }, [season, selectedSeason, watchedEpisodes]);
 
   // Auto-update status to 'completed' if all episodes watched
-  React.useEffect(() => {
-    if (isTracked && isFullyWatched && trackedShow?.status !== 'completed' && trackedShow?.status !== 'dropped') {
-        updateShowStatus(showId, 'completed');
-    }
-  }, [isTracked, isFullyWatched, trackedShow?.status, updateShowStatus, showId]);
+  // React.useEffect(() => {
+  //   if (isTracked && isFullyWatched && trackedShow?.status !== 'completed' && trackedShow?.status !== 'dropped') {
+  //       updateShowStatus(showId, 'completed');
+  //   }
+  // }, [isTracked, isFullyWatched, trackedShow?.status, updateShowStatus, showId]);
 
   // Handle Mark Previous Watched
   const handleMarkPreviousWatched = useCallback((currentEpisode: Episode) => {

@@ -133,7 +133,7 @@ export default function SettingsScreen() {
   const [isRestoreLoading, setIsRestoreLoading] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  const { clearWatchlist, trackedShows, updateShowStatus } = useWatchlistStore();
+  const { clearWatchlist, trackedShows, updateShowStatus, bulkUpdateShowStatus } = useWatchlistStore();
   const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage, showDroppedTab, toggleShowDroppedTab, showBooks, toggleShowBooks, showManga, toggleShowManga, showFavorites, toggleShowFavorites } = useSettingsStore();
   
   const t = strings[language] || strings.en;
@@ -309,13 +309,15 @@ export default function SettingsScreen() {
         
         // Process with a concurrency pool for maximum efficiency
         // Increased concurrency to speed up large library scans
-        const CONCURRENCY = 15;
+        const CONCURRENCY = 25;
         const processing = new Set<Promise<void>>();
+        const updates: { showId: number; status: 'completed' }[] = [];
         
         for (const show of watchingShows) {
             const task = (async () => {
                 try {
-                    const details = await getShowDetails(show.showId);
+                    // Fetch minimal details (no credits/similar/videos) for speed
+                    const details = await getShowDetails(show.showId, []);
                     const totalEpisodes = (details.seasons || [])
                         .filter((s:any) => s.season_number > 0)
                         .reduce((acc:number, s:any) => acc + s.episode_count, 0);
@@ -323,8 +325,7 @@ export default function SettingsScreen() {
                     const watchedCount = show.watchedEpisodes.length;
                     
                     if (watchedCount > 0 && watchedCount >= totalEpisodes && totalEpisodes > 0) {
-                        updateShowStatus(show.showId, 'completed');
-                        completedCount++;
+                        updates.push({ showId: show.showId, status: 'completed' });
                     }
                 } catch (e) {
                     console.warn(`Failed to check completion for show ${show.showId}`, e);
@@ -341,7 +342,13 @@ export default function SettingsScreen() {
         
         // Wait for remaining tasks
         await Promise.all(processing);
-        return completedCount;
+        
+        // Perform bulk update to minimize store writes/re-renders
+        if (updates.length > 0) {
+            bulkUpdateShowStatus(updates);
+        }
+        
+        return updates.length;
     } catch (e) {
         console.error('Scan failed', e);
         return 0;
