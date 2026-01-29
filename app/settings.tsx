@@ -290,6 +290,8 @@ export default function SettingsScreen() {
 
   const scanForCompletedShows = async (): Promise<number> => {
     setIsScanning(true);
+    // Prevent screen from sleeping during scan
+    await activateKeepAwakeAsync('scan-completed');
     let completedCount = 0;
     
     try {
@@ -297,32 +299,46 @@ export default function SettingsScreen() {
         const currentTrackedShows = useWatchlistStore.getState().trackedShows;
         const watchingShows = currentTrackedShows.filter(s => s.status !== 'completed' && s.status !== 'dropped');
         
-        // Process sequentially to be nice to API
+        // Process with a concurrency pool for maximum efficiency
+        // As soon as one request finishes, start the next one
+        const CONCURRENCY = 5;
+        const processing = new Set<Promise<void>>();
+        
         for (const show of watchingShows) {
-            try {
-                // Fetch full details to get total episodes
-                const details = await getShowDetails(show.showId);
-                // Calculate total episodes
-                const totalEpisodes = (details.seasons || [])
-                    .filter((s:any) => s.season_number > 0)
-                    .reduce((acc:number, s:any) => acc + s.episode_count, 0);
-                
-                // Compare with watched count
-                const watchedCount = show.watchedEpisodes.length;
-                
-                if (watchedCount > 0 && watchedCount >= totalEpisodes && totalEpisodes > 0) {
-                    updateShowStatus(show.showId, 'completed');
-                    completedCount++;
+            const task = (async () => {
+                try {
+                    const details = await getShowDetails(show.showId);
+                    const totalEpisodes = (details.seasons || [])
+                        .filter((s:any) => s.season_number > 0)
+                        .reduce((acc:number, s:any) => acc + s.episode_count, 0);
+                    
+                    const watchedCount = show.watchedEpisodes.length;
+                    
+                    if (watchedCount > 0 && watchedCount >= totalEpisodes && totalEpisodes > 0) {
+                        updateShowStatus(show.showId, 'completed');
+                        completedCount++;
+                    }
+                } catch (e) {
+                    console.warn(`Failed to check completion for show ${show.showId}`, e);
                 }
-            } catch (e) {
-                console.warn(`Failed to check completion for show ${show.showId}`, e);
+            })();
+
+            processing.add(task);
+            task.then(() => processing.delete(task));
+
+            if (processing.size >= CONCURRENCY) {
+                await Promise.race(processing);
             }
         }
+        
+        // Wait for remaining tasks
+        await Promise.all(processing);
         return completedCount;
     } catch (e) {
         console.error('Scan failed', e);
         return 0;
     } finally {
+        await deactivateKeepAwake('scan-completed');
         setIsScanning(false);
     }
   };
