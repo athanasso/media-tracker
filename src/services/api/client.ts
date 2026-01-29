@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/src/store/useSettingsStore';
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { TMDBErrorResponse } from '../../types';
 import { getLocales } from 'expo-localization';
+import { useLoadingStore } from '@/src/store/useLoadingStore';
 
 // ============================================
 // CONSTANTS
@@ -63,6 +64,9 @@ const createApiClient = (): AxiosInstance => {
   // Request interceptor - Add API key and authorization
   client.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
+      // Increment active requests
+      useLoadingStore.getState().increment();
+
       // Get API key from environment
       const apiKey = process.env.EXPO_PUBLIC_TMDB_API_KEY;
       
@@ -98,6 +102,7 @@ const createApiClient = (): AxiosInstance => {
       return config;
     },
     (error: AxiosError) => {
+      useLoadingStore.getState().decrement();
       console.error('Request interceptor error:', error);
       return Promise.reject(error);
     }
@@ -106,6 +111,8 @@ const createApiClient = (): AxiosInstance => {
   // Response interceptor - Handle errors globally
   client.interceptors.response.use(
     (response) => {
+      useLoadingStore.getState().decrement();
+
       // Log successful responses in development
       if (__DEV__) {
         console.log(`✅ API Response: ${response.status} ${response.config.url}`);
@@ -113,6 +120,8 @@ const createApiClient = (): AxiosInstance => {
       return response;
     },
     (error: AxiosError<TMDBErrorResponse>) => {
+      useLoadingStore.getState().decrement();
+
       // Handle specific error cases
       if (error.response) {
         const { status, data } = error.response;

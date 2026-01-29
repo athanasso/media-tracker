@@ -39,6 +39,21 @@ export const unstable_settings = {
   anchor: '(tabs)',
 };
 
+import { useLoadingStore } from '@/src/store/useLoadingStore';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
+
+const GlobalLoader = () => {
+    const isLoading = useLoadingStore(state => state.isLoading);
+    if (!isLoading) return null;
+    return (
+        <View style={styles.loaderContainer} pointerEvents="none">
+             <View style={styles.spinnerWrapper}>
+                <ActivityIndicator size="large" color="#ffffff" />
+             </View>
+        </View>
+    );
+};
+
 export default function RootLayout() {
   // Hide splash screen after layout is ready
   useEffect(() => {
@@ -134,9 +149,24 @@ export default function RootLayout() {
                 }}
               />
             </Stack>
+            <GlobalLoader />
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  loaderContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  spinnerWrapper: {
+      padding: 20,
+      borderRadius: 16,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+  }
+});
