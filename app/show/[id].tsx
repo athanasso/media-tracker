@@ -131,26 +131,31 @@ export default function ShowDetailsScreen() {
   // Scroll to relevant episode when episodes change
   React.useEffect(() => {
     if (season?.episodes && season.episodes.length > 0) {
-       const today = new Date();
-       // Find last aired episode
-       const airedEpisodes = season.episodes.filter(e => e.air_date && new Date(e.air_date) <= today);
-       let targetIndex = 0;
+       // Check if any episode in this season is watched
+       const hasWatchedEpisodes = watchedEpisodes.some(e => e.seasonNumber === selectedSeason);
        
-       if (airedEpisodes.length > 0) {
-           targetIndex = Math.max(0, airedEpisodes.length - 1 - 2); // Latest aired - 2
-           // Ensure it doesn't go below 0
-           targetIndex = Math.max(0, targetIndex);
-       }
+       if (hasWatchedEpisodes) {
+           const today = new Date();
+           // Find last aired episode
+           const airedEpisodes = season.episodes.filter(e => e.air_date && new Date(e.air_date) <= today);
+           let targetIndex = 0;
+           
+           if (airedEpisodes.length > 0) {
+               targetIndex = Math.max(0, airedEpisodes.length - 1 - 2); // Latest aired - 2
+               // Ensure it doesn't go below 0
+               targetIndex = Math.max(0, targetIndex);
+           }
 
-       // Small timeout to ensure layout is ready
-       setTimeout(() => {
-            if (flatListRef.current) {
-                // Assuming fixed height of 80 per item (including margin/padding if any)
-                flatListRef.current.scrollTo({ y: targetIndex * 80, animated: true });
-            }
-       }, 500);
+           // Small timeout to ensure layout is ready
+           setTimeout(() => {
+                if (flatListRef.current) {
+                    // Assuming fixed height of 80 per item (including margin/padding if any)
+                    flatListRef.current.scrollTo({ y: targetIndex * 80, animated: true });
+                }
+           }, 500);
+       }
     }
-  }, [season, selectedSeason]);
+  }, [season, selectedSeason, watchedEpisodes]);
 
   // Toggle show tracking
   const handleToggleTracking = useCallback(() => {
