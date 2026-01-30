@@ -5,7 +5,7 @@
 
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack, router } from 'expo-router';
+import { Stack, router, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -44,7 +44,13 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 
 const GlobalLoader = () => {
     const isLoading = useLoadingStore(state => state.isLoading);
-    if (!isLoading) return null;
+    const pathname = usePathname();
+    
+    // Only show loader on Profile and Calendar screens
+    const shouldShow = pathname === '/profile' || pathname === '/calendar';
+    
+    if (!isLoading || !shouldShow) return null;
+    
     return (
         <View style={styles.loaderContainer} pointerEvents="none">
              <View style={styles.spinnerWrapper}>
