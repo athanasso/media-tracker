@@ -464,7 +464,7 @@ export default function ProfileScreen() {
               return isCaughtUp(s);
           }
           return false;
-      }) as (TrackedShow & { airDate?: string; nextEpisode?: { seasonNumber: number; episodeNumber: number }; remainingEpisodes?: number })[];
+      }) as (TrackedShow & { airDate?: string; nextEpisode?: { seasonNumber: number; episodeNumber: number; seasonName?: string }; remainingEpisodes?: number })[];
     } else if (showsSubTab === 'in_progress') {
       shows = trackedShows
         .filter(s => {
@@ -482,7 +482,7 @@ export default function ProfileScreen() {
 
             let totalEpisodes = 0;
             let remainingEpisodes = 0;
-            let nextEpisode: { seasonNumber: number; episodeNumber: number } | undefined;
+            let nextEpisode: { seasonNumber: number; episodeNumber: number; seasonName?: string } | undefined;
             
             // Calculate total and find next episode
             if (details.seasons) {
@@ -518,7 +518,8 @@ export default function ProfileScreen() {
                             if (!isWatched) {
                                 nextEpisode = {
                                     seasonNumber: season.season_number,
-                                    episodeNumber: i
+                                    episodeNumber: i,
+                                    seasonName: season.name
                                 };
                                 break;
                             }
@@ -543,9 +544,11 @@ export default function ProfileScreen() {
                     );
                     
                     if (!isWatched && !nextEpisode) {
+                        const season = details.seasons?.find(s => s.season_number === apiNextEp.season_number);
                         nextEpisode = {
                             seasonNumber: apiNextEp.season_number,
-                            episodeNumber: apiNextEp.episode_number
+                            episodeNumber: apiNextEp.episode_number,
+                            seasonName: season?.name
                         };
                     }
                 }
@@ -585,7 +588,7 @@ export default function ProfileScreen() {
         })
         .filter((show): show is TrackedShow & { airDate: string; next_episode_to_air: any } => show !== null);
     } else if (showsSubTab === 'dropped') {
-      shows = trackedShows.filter(s => s.status === 'dropped') as (TrackedShow & { airDate?: string; nextEpisode?: { seasonNumber: number; episodeNumber: number }; remainingEpisodes?: number })[];
+      shows = trackedShows.filter(s => s.status === 'dropped') as (TrackedShow & { airDate?: string; nextEpisode?: { seasonNumber: number; episodeNumber: number; seasonName?: string }; remainingEpisodes?: number })[];
     }
 
     return filterAndSort(shows, showsSearch, showsSort, (s) => s.showName);

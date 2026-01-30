@@ -614,9 +614,28 @@ export default function ShowDetailsScreen() {
                 style={[styles.seasonChip, selectedSeason === s.season_number && styles.seasonChipActive]}
                 onPress={() => setSelectedSeason(s.season_number)}
               >
-                <Text style={[styles.seasonChipText, selectedSeason === s.season_number && styles.seasonChipTextActive]}>
-                  {t.season} {s.season_number}
-                </Text>
+                {/* Check if name is redundant with "Season N" label */}
+                {(s.name !== `Season ${s.season_number}` && s.name !== `${t.season} ${s.season_number}`) ? (
+                    <View style={{ alignItems: 'center' }}>
+                         <Text style={[
+                             styles.seasonChipLabel, 
+                             selectedSeason === s.season_number && styles.seasonChipTextActive
+                         ]}>
+                           {t.season} {s.season_number}
+                         </Text>
+                         <Text style={[
+                             styles.seasonChipText, 
+                             selectedSeason === s.season_number && styles.seasonChipTextActive,
+                             { fontSize: 15 } // Slightly larger title for named seasons
+                         ]}>
+                           {s.name}
+                         </Text>
+                    </View>
+                ) : (
+                    <Text style={[styles.seasonChipText, selectedSeason === s.season_number && styles.seasonChipTextActive]}>
+                       {s.name}
+                    </Text>
+                )}
               </TouchableOpacity>
                 );
               })}
@@ -1057,6 +1076,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  seasonChipLabel: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+    textAlign: 'center',
   },
   seasonChipTextActive: {
     color: Colors.text,
