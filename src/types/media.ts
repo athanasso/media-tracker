@@ -270,6 +270,8 @@ export interface TrackedShow {
   genres?: Genre[];
   episodeRunTime?: number[]; // from API
   nextAirDate?: string | null; // Caching for calendar
+  totalEpisodes?: number;
+  seasons?: { seasonNumber: number; episodeCount: number }[];
 }
 
 export interface TrackedMovie {

@@ -411,6 +411,45 @@ export default function ProfileScreen() {
     }
   }, [showDetailsQueries.data, trackedShows, bulkUpdateShowStatus]);
 
+  // Sync metadata to store (totalEpisodes, seasons) for offline/instant cache
+  useEffect(() => {
+    if (!showDetailsQueries.data) return;
+
+    showDetailsQueries.data.forEach(details => {
+        const show = trackedShows.find(s => s.showId === details.id);
+        if (!show) return;
+
+        let needsUpdate = false;
+        const newTotal = details.number_of_episodes;
+        
+        const newSeasons = details.seasons?.map(s => ({ seasonNumber: s.season_number, episodeCount: s.episode_count })) || [];
+        
+        if (show.totalEpisodes !== newTotal) needsUpdate = true;
+        
+        if (!needsUpdate) {
+             const currentSeasons = show.seasons || [];
+             if (currentSeasons.length !== newSeasons.length) {
+                 needsUpdate = true;
+             } else {
+                 for(let i=0; i<newSeasons.length; i++) {
+                     if (currentSeasons[i].seasonNumber !== newSeasons[i].seasonNumber || 
+                         currentSeasons[i].episodeCount !== newSeasons[i].episodeCount) {
+                         needsUpdate = true;
+                         break;
+                     }
+                 }
+             }
+        }
+
+        if (needsUpdate) {
+             updateShowDetails(show.showId, { 
+                 totalEpisodes: newTotal,
+                 seasons: newSeasons
+             });
+        }
+    });
+  }, [showDetailsQueries.data, trackedShows, updateShowDetails]);
+
   // Get filtered and sorted shows
   const filteredShows = useMemo(() => {
     let shows: (TrackedShow & { 
@@ -468,10 +507,14 @@ export default function ProfileScreen() {
           return false;
       }).map(show => {
         const details = showDetailsMap.get(show.showId);
+        
+        const derivedSeasons = details?.seasons?.map(s => ({ seasonNumber: s.season_number, episodeCount: s.episode_count })) || show.seasons;
+        const derivedTotalEpisodes = details?.number_of_episodes ?? show.totalEpisodes;
+
         return {
             ...show,
-            numberOfEpisodes: details?.number_of_episodes,
-            seasons: details?.seasons?.map(s => ({ seasonNumber: s.season_number, episodeCount: s.episode_count }))
+            numberOfEpisodes: derivedTotalEpisodes,
+            seasons: derivedSeasons
         };
       });
     } else if (showsSubTab === 'in_progress') {
@@ -487,48 +530,54 @@ export default function ProfileScreen() {
         })
         .map(show => {
             const details = showDetailsMap.get(show.showId);
-            if (!details) return show;
+            // Use derived seasons from API details or fallback to stored seasons
+            const derivedSeasons = details?.seasons?.map(s => ({ seasonNumber: s.season_number, episodeCount: s.episode_count })) || show.seasons;
+            const derivedTotalEpisodes = details?.number_of_episodes ?? show.totalEpisodes;
+            
+            if (!details && !derivedSeasons) return show;
 
             let totalEpisodes = 0;
             let remainingEpisodes = 0;
             let nextEpisode: { seasonNumber: number; episodeNumber: number; seasonName?: string } | undefined;
             
             // Calculate total and find next episode
-            if (details.seasons) {
+            if (derivedSeasons) {
                 // Sort seasons just in case
-                const sortedSeasons = [...details.seasons]
-                    .filter(s => s.season_number > 0) // Skip specials usually? Or keep them? Let's skip specials for "next" calculation for now unless watched
-                    .sort((a, b) => a.season_number - b.season_number);
+                const sortedSeasons = [...derivedSeasons]
+                    .filter(s => s.seasonNumber > 0) // Skip specials usually
+                    .sort((a, b) => a.seasonNumber - b.seasonNumber);
 
-                // Calculate total AIRED episodes based on last_episode_to_air
-                const lastAir = details.last_episode_to_air;
-                if (lastAir) {
+                // Calculate total AIRED episodes based on last_episode_to_air (from details only) or fallback
+                // If details missing, we assume all episodes in derivedSeasons are aired unless we track release dates there too (simplification)
+                const lastAir = details?.last_episode_to_air;
+                
+                if (details && lastAir) {
                     for (const season of sortedSeasons) {
-                         if (season.season_number < lastAir.season_number) {
-                            totalEpisodes += season.episode_count;
-                         } else if (season.season_number === lastAir.season_number) {
-                            // Ensure we don't exceed season count if API data is weird, but usually lastAir.episode_number is auth
-                            totalEpisodes += Math.min(season.episode_count, lastAir.episode_number);
+                         if (season.seasonNumber < lastAir.season_number) {
+                            totalEpisodes += season.episodeCount;
+                         } else if (season.seasonNumber === lastAir.season_number) {
+                            totalEpisodes += Math.min(season.episodeCount, lastAir.episode_number);
                          }
                     }
-                } else if (details.status === 'Ended' || details.status === 'Canceled') {
+                } else if (details?.status === 'Ended' || details?.status === 'Canceled') {
                      // If ended but lastAir missing (rare), assume all aired
-                     for (const season of sortedSeasons) totalEpisodes += season.episode_count;
+                     for (const season of sortedSeasons) totalEpisodes += season.episodeCount;
+                } else if (!details) {
+                     // Fallback: If we don't have fresh details, use stored totalEpisodes if available, or sum seasons
+                     totalEpisodes = derivedTotalEpisodes || sortedSeasons.reduce((acc, s) => acc + s.episodeCount, 0);
                 }
 
                 for (const season of sortedSeasons) {
-                    // totalEpisodes calculation moved to aired-logic above
-                    
                     if (!nextEpisode) {
-                        for (let i = 1; i <= season.episode_count; i++) {
+                        for (let i = 1; i <= season.episodeCount; i++) {
                             const isWatched = show.watchedEpisodes.some(
-                                e => e.seasonNumber === season.season_number && e.episodeNumber === i
+                                e => e.seasonNumber === season.seasonNumber && e.episodeNumber === i
                             );
                             if (!isWatched) {
                                 nextEpisode = {
-                                    seasonNumber: season.season_number,
+                                    seasonNumber: season.seasonNumber,
                                     episodeNumber: i,
-                                    seasonName: season.name
+                                    seasonName: '' // Name not stored in seasons usually
                                 };
                                 break;
                             }
@@ -539,7 +588,7 @@ export default function ProfileScreen() {
 
             // Fallback: Check if "next_episode_to_air" is actually a released episode that we missed 
             //String comparison optimization
-            const apiNextEp = details.next_episode_to_air;
+            const apiNextEp = details?.next_episode_to_air;
             if (apiNextEp && apiNextEp.air_date) {
                 const todayStr = new Date().toISOString().split('T')[0];
                 
@@ -553,7 +602,7 @@ export default function ProfileScreen() {
                     );
                     
                     if (!isWatched && !nextEpisode) {
-                        const season = details.seasons?.find(s => s.season_number === apiNextEp.season_number);
+                        const season = details?.seasons?.find(s => s.season_number === apiNextEp.season_number);
                         nextEpisode = {
                             seasonNumber: apiNextEp.season_number,
                             episodeNumber: apiNextEp.episode_number,
@@ -576,8 +625,8 @@ export default function ProfileScreen() {
                 ...show,
                 nextEpisode,
                 remainingEpisodes,
-                numberOfEpisodes: details.number_of_episodes,
-                seasons: details.seasons?.map(s => ({ seasonNumber: s.season_number, episodeCount: s.episode_count }))
+                numberOfEpisodes: derivedTotalEpisodes,
+                seasons: derivedSeasons
             };
         });
     } else if (showsSubTab === 'upcoming') {
