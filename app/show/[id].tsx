@@ -572,9 +572,11 @@ export default function ShowDetailsScreen() {
         {/* ===== SUMMARY ===== */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t.overview}</Text>
-          <Text style={styles.overview} numberOfLines={isOverviewExpanded ? undefined : 4}>
-            {show.overview || t.noDesc}
-          </Text>
+          <TouchableOpacity onPress={() => setIsOverviewExpanded(!isOverviewExpanded)} activeOpacity={0.7}>
+            <Text style={styles.overview} numberOfLines={isOverviewExpanded ? undefined : 4}>
+              {show.overview || t.noDesc}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* ===== CAST ===== */}

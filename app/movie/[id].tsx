@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { strings } from '@/src/i18n/strings';
@@ -28,6 +28,7 @@ const Colors = {
 export default function MovieDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const movieId = parseInt(id, 10);
+  const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
   const language = useSettingsStore((state) => state.language);
   const t = strings[language] || strings.en;
 
@@ -242,9 +243,14 @@ export default function MovieDetailsScreen() {
         )}
 
         {/* Overview */}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t.overview}</Text>
-          <Text style={styles.overview}>{movie.overview || t.noDesc}</Text>
+          <TouchableOpacity onPress={() => setIsOverviewExpanded(!isOverviewExpanded)} activeOpacity={0.7}>
+            <Text style={styles.overview} numberOfLines={isOverviewExpanded ? undefined : 4}>
+              {movie.overview || t.noDesc}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Cast */}
