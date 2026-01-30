@@ -1200,6 +1200,27 @@ export default function ProfileScreen() {
     t
   ]);
 
+  const renderShowOrUpcomingItem = useCallback(({ item }: { item: any }) => {
+      if (showsSubTab === 'upcoming') {
+          return renderUpcomingShowItem({ item });
+      }
+      return renderShowItem({ item });
+  }, [showsSubTab, renderUpcomingShowItem, renderShowItem]);
+
+  const renderFavoriteList = useCallback(({ item }: { item: any }) => {
+      if (item.type === 'show') return renderShowItem({ item: item });
+      if (item.type === 'movie') return renderMovieItem({ item: item });
+      if (item.type === 'book') return renderBookItem({ item: item });
+      return renderMangaItem({ item: item });
+  }, [renderShowItem, renderMovieItem, renderBookItem, renderMangaItem]);
+
+  const renderPlanList = useCallback(({ item }: { item: any }) => {
+      if (item.type === 'show') return renderShowItem({ item: item });
+      if (item.type === 'movie') return renderMovieItem({ item: item });
+      if (item.type === 'book') return renderBookItem({ item: item });
+      return renderMangaItem({ item: item });
+  }, [renderShowItem, renderMovieItem, renderBookItem, renderMangaItem]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={{ paddingHorizontal: 16 }}>
@@ -1214,10 +1235,7 @@ export default function ProfileScreen() {
           removeClippedSubviews={true}
           data={filteredShows}
           keyExtractor={(item) => item.showId.toString()}
-          renderItem={({ item }) => showsSubTab === 'upcoming' 
-            ? renderUpcomingShowItem({ item: item as any }) 
-            : renderShowItem({ item })
-          }
+          renderItem={renderShowOrUpcomingItem}
           contentContainerStyle={styles.listContent}
           style={{ flex: 1 }}
           ListEmptyComponent={
@@ -1319,12 +1337,7 @@ export default function ProfileScreen() {
             const id = item.showId || item.movieId || item.id;
             return `${prefix}-fav-${id}-idx${index}`;
           }}
-          renderItem={({ item }: { item: any }) => {
-            if (item.type === 'show') return renderShowItem({ item: item as TrackedShow });
-            if (item.type === 'movie') return renderMovieItem({ item: item as TrackedMovie });
-            if (item.type === 'book') return renderBookItem({ item: item as TrackedBook });
-            return renderMangaItem({ item: item as TrackedManga });
-          }}
+          renderItem={renderFavoriteList}
           contentContainerStyle={styles.listContent}
           style={{ flex: 1 }}
           ListEmptyComponent={
@@ -1348,12 +1361,7 @@ export default function ProfileScreen() {
             // Use index to ensure uniqueness even if somehow duplicates exist
             return `${prefix}-${id}-idx${index}`;
           }}
-          renderItem={({ item }: { item: any }) => {
-            if (item.type === 'show') return renderShowItem({ item: item as TrackedShow });
-            if (item.type === 'movie') return renderMovieItem({ item: item as TrackedMovie });
-            if (item.type === 'book') return renderBookItem({ item: item as TrackedBook });
-            return renderMangaItem({ item: item as TrackedManga });
-          }}
+          renderItem={renderPlanList}
           contentContainerStyle={styles.listContent}
           style={{ flex: 1 }}
           ListEmptyComponent={<View style={styles.emptyContainer}><Ionicons name="bookmark-outline" size={64} color={Colors.textSecondary} /><Text style={styles.emptyText}>{t.noPlanItems}</Text></View>}

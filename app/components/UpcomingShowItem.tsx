@@ -38,7 +38,7 @@ const UpcomingShowItem = memo(({
     
     if (!date) return null;
 
-    const hasNotif = hasNotification(item.showId, 'show');
+    const hasNotif = typeof hasNotification === 'function' ? hasNotification(item.showId, 'show') : false;
 
     return (
       <TouchableOpacity 

@@ -71,8 +71,8 @@ const ShowItem = memo(({
         setIsMarkingWatched(false);
     }, [item.nextEpisode?.seasonNumber, item.nextEpisode?.episodeNumber]);
 
-    const hasNotif = item.airDate ? hasNotification(item.showId, 'show') : false;
-    const notifPref = item.airDate ? getNotificationPreference(item.showId, 'show') : undefined;
+    const hasNotif = (item.airDate && typeof hasNotification === 'function') ? hasNotification(item.showId, 'show') : false;
+    const notifPref = (item.airDate && typeof getNotificationPreference === 'function') ? getNotificationPreference(item.showId, 'show') : undefined;
 
     return (
       <TouchableOpacity 
