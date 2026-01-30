@@ -893,7 +893,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.menuContent}>
                 <Text style={styles.menuTitle}>{t.version}</Text>
-                <Text style={styles.menuSubtitle}>3.2.1</Text>
+                <Text style={styles.menuSubtitle}>3.2.2</Text>
               </View>
             </View>
           </View>
