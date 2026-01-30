@@ -417,6 +417,8 @@ export default function ProfileScreen() {
         airDate?: string; 
         nextEpisode?: { seasonNumber: number; episodeNumber: number };
         remainingEpisodes?: number;
+        numberOfEpisodes?: number;
+        seasons?: { seasonNumber: number; episodeCount: number }[];
     })[] = [];
     const showDetailsMap = new Map(
       (showDetailsQueries.data || []).map(show => [show.id, show])
@@ -464,7 +466,14 @@ export default function ProfileScreen() {
               return isCaughtUp(s);
           }
           return false;
-      }) as (TrackedShow & { airDate?: string; nextEpisode?: { seasonNumber: number; episodeNumber: number; seasonName?: string }; remainingEpisodes?: number })[];
+      }).map(show => {
+        const details = showDetailsMap.get(show.showId);
+        return {
+            ...show,
+            numberOfEpisodes: details?.number_of_episodes,
+            seasons: details?.seasons?.map(s => ({ seasonNumber: s.season_number, episodeCount: s.episode_count }))
+        };
+      });
     } else if (showsSubTab === 'in_progress') {
       shows = trackedShows
         .filter(s => {
@@ -566,7 +575,9 @@ export default function ProfileScreen() {
             return {
                 ...show,
                 nextEpisode,
-                remainingEpisodes
+                remainingEpisodes,
+                numberOfEpisodes: details.number_of_episodes,
+                seasons: details.seasons?.map(s => ({ seasonNumber: s.season_number, episodeCount: s.episode_count }))
             };
         });
     } else if (showsSubTab === 'upcoming') {
@@ -588,7 +599,14 @@ export default function ProfileScreen() {
         })
         .filter((show): show is TrackedShow & { airDate: string; next_episode_to_air: any } => show !== null);
     } else if (showsSubTab === 'dropped') {
-      shows = trackedShows.filter(s => s.status === 'dropped') as (TrackedShow & { airDate?: string; nextEpisode?: { seasonNumber: number; episodeNumber: number; seasonName?: string }; remainingEpisodes?: number })[];
+      shows = trackedShows.filter(s => s.status === 'dropped').map(show => {
+        const details = showDetailsMap.get(show.showId);
+        return {
+            ...show,
+            numberOfEpisodes: details?.number_of_episodes,
+            seasons: details?.seasons?.map(s => ({ seasonNumber: s.season_number, episodeCount: s.episode_count }))
+        };
+      });
     }
 
     return filterAndSort(shows, showsSearch, showsSort, (s) => s.showName);

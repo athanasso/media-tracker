@@ -1,10 +1,5 @@
-/**
- * Settings Screen
- * App settings, import/export data, and about section
- */
-
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -48,7 +43,6 @@ const Colors = {
   warning: '#f59e0b',
   border: '#333333',
 };
-
 
 function MatchDetailView({ id, type }: { id: number, type: 'movie' | 'show' }) {
   const { data: item, isLoading } = useQuery<any>({
@@ -133,13 +127,58 @@ export default function SettingsScreen() {
   const [isRestoreLoading, setIsRestoreLoading] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  const { clearWatchlist, trackedShows, updateShowStatus, bulkUpdateShowStatus } = useWatchlistStore();
+  const { clearWatchlist, trackedShows, trackedMovies, updateShowStatus, bulkUpdateShowStatus } = useWatchlistStore();
   const { dateFormat, setDateFormat, customDateFormat, setCustomDateFormat, getFormattedDate, language, setLanguage, showDroppedTab, toggleShowDroppedTab, showBooks, toggleShowBooks, showManga, toggleShowManga, showFavorites, toggleShowFavorites } = useSettingsStore();
   
   const t = strings[language] || strings.en;
+  
+  // Calculate accurate episode count using cached details if available
+  // We utilize the cached data from React Query to avoid redundant fetches
+  const showDetailsQueriesResult = useQueries({
+    queries: trackedShows.map(show => ({
+      queryKey: ['show-details', show.showId, 'minimal'],
+      queryFn: () => getShowDetails(show.showId, []),
+      staleTime: 1000 * 60 * 60, // 1 hour
+    }))
+  });
 
-  // Get current data stats
-  const exportPreview = getExportPreview();
+  const exportPreview = React.useMemo(() => {
+     let epCount = 0;
+     const showDetailsMap = new Map();
+     showDetailsQueriesResult.forEach(q => {
+        if (q.data) showDetailsMap.set(q.data.id, q.data);
+     });
+
+     trackedShows.forEach(show => {
+        const details = showDetailsMap.get(show.showId);
+        const totalEpisodes = details?.number_of_episodes || 0;
+        const watchedCount = show.watchedEpisodes.length;
+        
+        const lastWatched = [...show.watchedEpisodes].sort((a, b) => 
+            (a.seasonNumber - b.seasonNumber) || (a.episodeNumber - b.episodeNumber)
+        ).pop();
+        const { seasonNumber: currentSeason = 1, episodeNumber: currentEpNum = 0 } = lastWatched || {};
+
+        const episodesFromPastSeasons = (details?.seasons || [])
+            .filter((s: any) => s.season_number > 0 && s.season_number < currentSeason)
+            .reduce((sum: number, s: any) => sum + (s.episode_count || 0), 0);
+
+        let displayCount = episodesFromPastSeasons + currentEpNum;
+
+        if (currentSeason === 1 || !details?.seasons) {
+            displayCount = currentEpNum || watchedCount || 0;
+        }
+        
+        const finalCount = totalEpisodes > 0 ? Math.min(displayCount, totalEpisodes) : displayCount;
+        epCount += finalCount;
+     });
+     
+     return {
+         showCount: trackedShows.length,
+         movieCount: trackedMovies.length,
+         episodeCount: epCount
+     };
+  }, [trackedShows, trackedMovies, showDetailsQueriesResult]);
 
   // Check auth status on focus
   useFocusEffect(

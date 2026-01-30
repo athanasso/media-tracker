@@ -14,6 +14,8 @@ interface ShowItemProps {
         airDate?: string; 
         nextEpisode?: { seasonNumber: number; episodeNumber: number };
         remainingEpisodes?: number;
+        numberOfEpisodes?: number;
+        seasons?: { seasonNumber: number; episodeCount: number }[];
     };
     activeTab: string;
     showsSubTab: string;
@@ -119,7 +121,31 @@ const ShowItem = memo(({
           ) : (
             <>
                 <Text style={styles.progressText}>
-                    {watchedCount} {t.episodesWatched}
+                    {(() => {
+                        const totalEpisodes = item.numberOfEpisodes || 0;
+                        const lastWatched = [...item.watchedEpisodes].sort((a, b) => 
+                            (a.seasonNumber - b.seasonNumber) || (a.episodeNumber - b.episodeNumber)
+                        ).pop();
+                        const { seasonNumber: currentSeason = 1, episodeNumber: currentEpNum = 0 } = lastWatched || {};
+
+                        // Sum up all episodes from completed previous seasons (excluding specials)
+                        const episodesFromPastSeasons = (item.seasons || [])
+                            .filter(s => s.seasonNumber > 0 && s.seasonNumber < currentSeason)
+                            .reduce((sum, s) => sum + (s.episodeCount || 0), 0);
+
+                        // Total = past seasons + current season progress
+                        let displayCount = episodesFromPastSeasons + currentEpNum;
+
+                        // Fallback for simple numbering or missing season data
+                        if (currentSeason === 1 || !item.seasons) {
+                            displayCount = currentEpNum || watchedCount || 0;
+                        }
+
+                        // Clamp to total
+                        const finalCount = totalEpisodes > 0 ? Math.min(displayCount, totalEpisodes) : displayCount;
+
+                        return `${finalCount} ${t.episodesWatched}`;
+                    })()}
                 </Text>
                 {activeTab === 'shows' && showsSubTab === 'in_progress' && (
                     <Text style={styles.remainingText}>

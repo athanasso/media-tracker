@@ -5,8 +5,10 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { strings } from '@/src/i18n/strings';
+import { getShowDetails } from '@/src/services/api';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
 import { TrackingStatus } from '@/src/types';
+import { useQueries } from '@tanstack/react-query';
 
 const Colors = {
   primary: '#E50914',
@@ -34,6 +36,23 @@ export default function StatsScreen() {
   
   const { trackedShows, trackedMovies } = useWatchlistStore();
 
+  // Fetch details for calculating accurate stats
+  const showDetailsQueriesResult = useQueries({
+    queries: trackedShows.map(show => ({
+      queryKey: ['show-details', show.showId, 'minimal'],
+      queryFn: () => getShowDetails(show.showId, []),
+      staleTime: 1000 * 60 * 60, // 1 hour
+    }))
+  });
+
+  const showDetailsMap = useMemo(() => {
+    const map = new Map();
+    showDetailsQueriesResult.forEach(q => {
+      if (q.data) map.set(q.data.id, q.data);
+    });
+    return map;
+  }, [showDetailsQueriesResult]);
+
   // --- Calculations ---
 
   const formatTime = (minutes: number) => {
@@ -49,6 +68,34 @@ export default function StatsScreen() {
     return parts.join(' ');
   };
 
+  const getCalculatedWatchedCount = (show: typeof trackedShows[0]) => {
+      const details = showDetailsMap.get(show.showId);
+      const totalEpisodes = details?.number_of_episodes || 0;
+      const watchedCount = show.watchedEpisodes.length;
+      
+      const lastWatched = [...show.watchedEpisodes].sort((a, b) => 
+          (a.seasonNumber - b.seasonNumber) || (a.episodeNumber - b.episodeNumber)
+      ).pop();
+      const { seasonNumber: currentSeason = 1, episodeNumber: currentEpNum = 0 } = lastWatched || {};
+
+      // Sum up all episodes from completed previous seasons (excluding specials)
+      const episodesFromPastSeasons = (details?.seasons || [])
+          .filter((s: { season_number: number }) => s.season_number > 0 && s.season_number < currentSeason)
+          .reduce((sum: number, s: { episode_count: number }) => sum + (s.episode_count || 0), 0);
+
+      // Total = past seasons + current season progress
+      let displayCount = episodesFromPastSeasons + currentEpNum;
+
+      // Fallback for simple numbering or missing season data
+      if (currentSeason === 1 || !details?.seasons) {
+          displayCount = currentEpNum || watchedCount || 0;
+      }
+
+      // Clamp to total
+      const finalCount = totalEpisodes > 0 ? Math.min(displayCount, totalEpisodes) : displayCount;
+      return finalCount;
+  };
+
   const showStats = useMemo(() => {
     const total = trackedShows.length;
     const byStatus = trackedShows.reduce((acc, show) => {
@@ -56,16 +103,18 @@ export default function StatsScreen() {
       return acc;
     }, {} as Record<TrackingStatus, number>);
 
-    // Time Spent (approximate using average of episode run times or default 45m)
+    // Time Spent
     const timeSpent = trackedShows.reduce((acc, show) => {
       const avgRuntime = show.episodeRunTime && show.episodeRunTime.length > 0 
         ? show.episodeRunTime.reduce((a, b) => a + b, 0) / show.episodeRunTime.length 
         : 45;
-      return acc + (show.watchedEpisodes.length * avgRuntime);
+      
+      const count = getCalculatedWatchedCount(show);
+      return acc + (count * avgRuntime);
     }, 0);
 
     return { total, byStatus, timeSpent };
-  }, [trackedShows]);
+  }, [trackedShows, showDetailsMap]);
 
   const movieStats = useMemo(() => {
     const total = trackedMovies.length;
@@ -90,18 +139,18 @@ export default function StatsScreen() {
   const episodeStats = useMemo(() => {
     // Total episodes watched across all shows
     const totalWatched = trackedShows.reduce(
-      (acc, show) => acc + show.watchedEpisodes.length, 
+      (acc, show) => acc + getCalculatedWatchedCount(show), 
       0
     );
 
     // Shows with most watched episodes
     const topShows = [...trackedShows]
-      .sort((a, b) => b.watchedEpisodes.length - a.watchedEpisodes.length)
-      .slice(0, 5)
-      .map(s => ({ name: s.showName, count: s.watchedEpisodes.length }));
+      .map(s => ({ name: s.showName, count: getCalculatedWatchedCount(s) }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
 
     return { totalWatched, topShows };
-  }, [trackedShows]);
+  }, [trackedShows, showDetailsMap]);
 
   // --- Render Helpers ---
 
