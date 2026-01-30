@@ -25,8 +25,8 @@ const queryClient = new QueryClient({
     queries: {
       // Stale time - data is fresh for 5 minutes
       staleTime: 1000 * 60 * 5,
-      // Cache time - data stays in cache for 30 minutes
-      gcTime: 1000 * 60 * 30,
+      // Cache time - data stays in cache for 24 hours (processed garbage collection)
+      gcTime: 1000 * 60 * 60 * 24,
       // Retry failed requests 2 times
       retry: 2,
       // Refetch on window focus
@@ -34,6 +34,11 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+import { setupQueryClientPersistence } from '@/src/services/queryClientPersister';
+
+// Initialize persistence
+setupQueryClientPersistence(queryClient);
 
 export const unstable_settings = {
   anchor: '(tabs)',

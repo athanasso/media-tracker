@@ -1190,6 +1190,10 @@ export default function ProfileScreen() {
       
       {activeTab === 'shows' ? (
         <FlatList
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          windowSize={5}
+          removeClippedSubviews={true}
           data={filteredShows}
           keyExtractor={(item) => item.showId.toString()}
           renderItem={({ item }) => showsSubTab === 'upcoming' 
@@ -1218,6 +1222,10 @@ export default function ProfileScreen() {
         />
       ) : activeTab === 'movies' ? (
         <FlatList
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          windowSize={5}
+          removeClippedSubviews={true}
           data={filteredMovies}
           keyExtractor={(item) => item.movieId.toString()}
           renderItem={renderMovieItem}
@@ -1242,6 +1250,10 @@ export default function ProfileScreen() {
         />
       ) : activeTab === 'books' ? (
         <FlatList
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          windowSize={5}
+          removeClippedSubviews={true}
           data={filteredBooks}
           keyExtractor={(item) => item.id}
           renderItem={renderBookItem}
@@ -1258,6 +1270,10 @@ export default function ProfileScreen() {
         />
       ) : activeTab === 'manga' ? (
         <FlatList
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          windowSize={5}
+          removeClippedSubviews={true}
           data={filteredManga}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderMangaItem}
@@ -1274,6 +1290,10 @@ export default function ProfileScreen() {
         />
       ) : activeTab === 'favorites' ? (
         <FlatList
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          windowSize={5}
+          removeClippedSubviews={true}
           data={filteredFavorites}
           keyExtractor={(item, index) => {
             const prefix = item.type === 'show' ? 'show' : item.type === 'movie' ? 'movie' : item.type === 'book' ? 'book' : 'manga';
@@ -1298,6 +1318,10 @@ export default function ProfileScreen() {
         />
       ) : (
         <FlatList
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          windowSize={5}
+          removeClippedSubviews={true}
           data={filteredPlanItems}
           keyExtractor={(item, index) => {
             const prefix = item.type === 'show' ? 'show' : item.type === 'movie' ? 'movie' : item.type === 'book' ? 'book' : 'manga';
