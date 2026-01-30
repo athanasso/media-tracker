@@ -63,6 +63,14 @@ export default function MovieDetailsScreen() {
   const isTracked = !!trackedMovie;
   const watched = trackedMovie?.watchedAt !== null && trackedMovie?.watchedAt !== undefined;
 
+  // Helper to extract trailer
+  const trailer = useMemo(() => {
+    if (!movie?.videos?.results) return null;
+    return movie.videos.results.find(
+      (v) => v.site === 'YouTube' && v.type === 'Trailer'
+    );
+  }, [movie]);
+
   const handleToggleTracking = () => {
     if (isTracked) {
       removeMovie(movieId);
@@ -221,6 +229,18 @@ export default function MovieDetailsScreen() {
            )}
         </View>
 
+
+
+        {/* Trailer */}
+        {trailer && (
+          <View style={styles.trailerSection}>
+            <TouchableOpacity style={styles.trailerButton} onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${trailer.key}`)}>
+              <Ionicons name="logo-youtube" size={20} color="#ff0000" />
+              <Text style={styles.trailerButtonText}>{t.trailer}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Overview */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t.overview}</Text>
@@ -313,4 +333,19 @@ const styles = StyleSheet.create({
   providerRow: { flexDirection: 'row', gap: 8 },
   providerLogo: { width: 44, height: 44, borderRadius: 8, backgroundColor: Colors.surface, borderWidth: 1, borderColor: '#333' },
   attributionText: { fontSize: 10, color: Colors.textSecondary, textAlign: 'center', marginTop: 12, opacity: 0.6 },
+
+  // Trailer
+  trailerSection: { paddingHorizontal: 16, marginBottom: 24 },
+  trailerButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 8, 
+    backgroundColor: Colors.surface, 
+    paddingVertical: 12, 
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333'
+  },
+  trailerButtonText: { color: Colors.text, fontWeight: '600', fontSize: 16 },
 });

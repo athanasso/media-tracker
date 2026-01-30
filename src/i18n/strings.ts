@@ -216,6 +216,7 @@ export const strings = {
     markShowWatchedConfirm: 'Mark all seasons as watched?',
     markPreviousWatched: 'Mark Previous Watched',
     movieNotFound: 'Movie not found',
+    trailer: 'Watch Trailer',
 
     // Stats Screen
     statistics: 'Statistics',
@@ -479,6 +480,7 @@ export const strings = {
     markShowWatchedConfirm: 'Ολοκλήρωση όλων των σεζόν;',
     markPreviousWatched: 'Ολοκλήρωση Προηγούμενων',
     movieNotFound: 'Η ταινία δεν βρέθηκε',
+    trailer: 'Trailer',
 
     // Stats Screen
     statistics: 'Στατιστικά',

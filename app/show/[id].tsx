@@ -103,6 +103,14 @@ export default function ShowDetailsScreen() {
   const isTracked = !!trackedShow;
   const watchedEpisodes = useMemo(() => trackedShow?.watchedEpisodes || [], [trackedShow?.watchedEpisodes]);
   const watchedCount = watchedEpisodes.length;
+  
+  // Helper to extract trailer
+  const trailer = useMemo(() => {
+    if (!show?.videos?.results) return null;
+    return show.videos.results.find(
+      (v) => v.site === 'YouTube' && v.type === 'Trailer'
+    );
+  }, [show]);
 
   // Extract data (early return if show needed)
   const seasons = show?.seasons?.filter((s) => s.season_number > 0) || [];
@@ -550,6 +558,16 @@ export default function ShowDetailsScreen() {
           
 
         </View>
+
+        {/* ===== TRAILER ===== */}
+        {trailer && (
+          <View style={styles.trailerSection}>
+            <TouchableOpacity style={styles.trailerButton} onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${trailer.key}`)}>
+              <Ionicons name="logo-youtube" size={20} color="#ff0000" />
+              <Text style={styles.trailerButtonText}>{t.trailer}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* ===== SUMMARY ===== */}
         <View style={styles.section}>
@@ -1307,4 +1325,19 @@ const styles = StyleSheet.create({
   castScroll: {
     gap: 12,
   },
+  
+  // Trailer
+  trailerSection: { paddingHorizontal: 16, marginBottom: 24 },
+  trailerButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 8, 
+    backgroundColor: Colors.surface, 
+    paddingVertical: 12, 
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333'
+  },
+  trailerButtonText: { color: Colors.text, fontWeight: '600', fontSize: 16 },
 });
