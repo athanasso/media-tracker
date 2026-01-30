@@ -64,7 +64,6 @@ Quick access to all your favorite content, filtered by:
 - Horizontal season selector with progress bars
 - Episode checkboxes for quick tracking
 - Pull-to-refresh on all screens
-- **Global Loading Indicator** - Non-intrusive, centered loading overlay during background operations
 - Smooth animations and transitions
 - Intuitive tab navigation
 
@@ -138,6 +137,11 @@ Quick access to all your favorite content, filtered by:
 - **Problem**: Interactions felt flat and purely visual.
 - **Solution**: Integrated `expo-haptics` for key actions.
 - **Impact**: Subtle vibrations confirm "Drops", "Mark Watched", and "Favorites", making the app feel premium and responsive.
+
+### ⚡ Instant Profile Load & Caching
+- **Problem**: Profile screen suffered from layout shifts and "flashing" incorrect episode counts on load.
+- **Solution**: Implemented intelligent metadata caching (seasons/episodes) directly in MMKV and memoized list rendering.
+- **Impact**: Zero-latency profile loads with instant, accurate statistics even before API data refreshes.
 
 ## 🚀 Getting Started
 
