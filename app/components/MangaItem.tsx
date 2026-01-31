@@ -1,5 +1,6 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import React, { memo } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { TrackedManga, TrackingStatus } from '@/src/types';
 
@@ -15,7 +16,7 @@ interface MangaItemProps {
   onUpdateProgress?: (id: number, chapter: number, volume: number) => void;
 }
 
-const MangaItem = ({ 
+const MangaItem = memo(({ 
   item, 
   activeTab, 
   mangaSubTab, 
@@ -30,7 +31,9 @@ const MangaItem = ({
     <View style={styles.container}>
       <Image 
         source={{ uri: item.coverUrl || 'https://via.placeholder.com/100x150?text=No+Cover' }} 
-        style={styles.poster} 
+        style={styles.poster}
+        contentFit="cover"
+        transition={300}
       />
       <View style={styles.content}>
         <View style={styles.header}>
@@ -105,12 +108,16 @@ const MangaItem = ({
       </View>
     </View>
   );
-};
+});
+
+import { AppColors } from '@/src/theme/colors';
+
+const Colors = AppColors;
 
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     marginBottom: 12,
     overflow: 'hidden',
@@ -119,7 +126,7 @@ const styles = StyleSheet.create({
   poster: {
     width: 93,
     height: 140,
-    backgroundColor: '#333',
+    backgroundColor: Colors.surfaceElevated,
   },
   content: {
     flex: 1,
@@ -132,7 +139,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   title: {
-    color: '#fff',
+    color: Colors.text,
     fontSize: 16,
     fontWeight: 'bold',
     flex: 1,
@@ -142,7 +149,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   progressText: {
-    color: '#a0a0a0',
+    color: Colors.textSecondary,
     fontSize: 12,
     marginBottom: 4,
   },
@@ -156,24 +163,23 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   progressTextVol: {
-    color: '#a0a0a0',
+    color: Colors.textSecondary,
     fontSize: 12,
-    // marginTop removed as handled by row container
   },
   progressBarBg: {
     height: 4,
-    backgroundColor: '#333',
+    backgroundColor: Colors.surfaceElevated,
     borderRadius: 2,
   },
   progressBarFill: {
     height: 4,
-    backgroundColor: '#22c55e',
+    backgroundColor: Colors.success,
     borderRadius: 2,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center', // Changed from flex-end to center to align items nicely
+    alignItems: 'center',
     marginTop: 8,
   },
   statusButton: {
@@ -181,7 +187,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
-    minWidth: 90, // Ensure enough width to center text nicely
+    minWidth: 90,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -192,7 +198,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   date: {
-    color: '#666',
+    color: Colors.textMuted,
     fontSize: 10,
   },
 });

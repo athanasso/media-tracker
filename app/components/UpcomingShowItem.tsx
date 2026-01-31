@@ -16,13 +16,9 @@ interface UpcomingShowItemProps {
     onRemove: (id: number) => void;
 }
 
-const Colors = {
-    primary: '#E50914',
-    text: '#ffffff',
-    textSecondary: '#a0a0a0',
-    surface: '#1a1a1a',
-    surfaceLight: '#2a2a2a',
-};
+import { AppColors } from '@/src/theme/colors';
+
+const Colors = AppColors;
 
 const UpcomingShowItem = memo(({ 
     item, 

@@ -3,8 +3,16 @@
  * Displays full show info with backdrop, genres, cast, seasons selector, and episode tracking
  */
 
+import { useShowDetails } from '@/src/hooks/useShowDetails';
+import { strings } from '@/src/i18n/strings';
+import { getBackdropUrl, getPosterUrl, getProfileUrl } from '@/src/services/api/client';
+import { getShowWatchProviders } from '@/src/services/api/tmdb';
+import { useSettingsStore, useWatchlistStore } from '@/src/store';
+import { AppColors } from '@/src/theme/colors';
+import { CastMember, Episode, Genre, WatchProvider } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -12,7 +20,6 @@ import {
     ActivityIndicator,
     Alert,
     Dimensions,
-    Image,
     Linking,
     Pressable,
     ScrollView,
@@ -24,33 +31,11 @@ import {
     FlatList,
 } from 'react-native';
 
-import { useShowDetails } from '@/src/hooks/useShowDetails';
-import { strings } from '@/src/i18n/strings';
-import { getBackdropUrl, getPosterUrl, getProfileUrl } from '@/src/services/api/client';
-import { getShowWatchProviders } from '@/src/services/api/tmdb';
-import { useSettingsStore, useWatchlistStore } from '@/src/store';
-import { CastMember, Episode, Genre, WatchProvider } from '@/src/types';
-
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BACKDROP_HEIGHT = SCREEN_HEIGHT * 0.45;
 
-// Theme colors
-const Colors = {
-  primary: '#E50914',
-  primaryDark: '#B20710',
-  background: '#0a0a0a',
-  surface: '#1a1a1a',
-  surfaceLight: '#2a2a2a',
-  surfaceElevated: '#333333',
-  text: '#ffffff',
-  textSecondary: '#a0a0a0',
-  textMuted: '#666666',
-  success: '#22c55e',
-  successDark: '#16a34a',
-  warning: '#f59e0b',
-  border: '#3a3a3a',
-  overlay: 'rgba(0,0,0,0.6)',
-};
+// Use centralized colors
+const Colors = AppColors;
 
 export default function ShowDetailsScreen() {
   const router = useRouter();
@@ -406,7 +391,7 @@ export default function ShowDetailsScreen() {
           <Image
             source={{ uri: getBackdropUrl(show.backdrop_path, 'large') || '' }}
             style={styles.backdropImage}
-            resizeMode="cover"
+            contentFit="cover"
           />
           <LinearGradient
             colors={['transparent', 'rgba(10,10,10,0.4)', 'rgba(10,10,10,0.9)', Colors.background]}
@@ -419,7 +404,7 @@ export default function ShowDetailsScreen() {
             <Image
               source={{ uri: getPosterUrl(show.poster_path, 'medium') || '' }}
               style={styles.posterImage}
-              resizeMode="cover"
+              contentFit="cover"
             />
             <View style={styles.headerInfo}>
               <Text style={styles.showTitle} numberOfLines={3}>
@@ -596,7 +581,7 @@ export default function ShowDetailsScreen() {
                            'https://via.placeholder.com/185x278/1a1a1a/666666?text=No+Photo'
                     }}
                     style={styles.castImage}
-                    resizeMode="cover"
+                    contentFit="cover"
                   />
                   <Text style={styles.castName} numberOfLines={1}>{member.name}</Text>
                   <Text style={styles.castCharacter} numberOfLines={1}>{member.character}</Text>

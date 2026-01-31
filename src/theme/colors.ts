@@ -27,6 +27,7 @@ export const AppColors = {
   warning: '#f59e0b',
   error: '#ef4444',
   info: '#3b82f6',
+  blue: '#3b82f6', // Alias for info - used in calendar
 
   // Tracking status colors
   statusWatching: '#22c55e',    // Green

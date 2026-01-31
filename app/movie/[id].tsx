@@ -2,28 +2,23 @@
  * Movie Details Screen
  */
 
-import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useLocalSearchParams } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
 import { strings } from '@/src/i18n/strings';
 import { getMovieDetails } from '@/src/services/api';
 import { getBackdropUrl, getPosterUrl, getProfileUrl } from '@/src/services/api/client';
 import { getMovieWatchProviders } from '@/src/services/api/tmdb';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
+import { AppColors } from '@/src/theme/colors';
 import { CastMember, WatchProvider } from '@/src/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const Colors = {
-  primary: '#E50914',
-  background: '#0a0a0a',
-  surface: '#1a1a1a',
-  text: '#ffffff',
-  textSecondary: '#a0a0a0',
-  success: '#22c55e',
-};
+// Use centralized colors
+const Colors = AppColors;
 
 export default function MovieDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

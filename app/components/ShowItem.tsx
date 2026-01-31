@@ -30,14 +30,9 @@ interface ShowItemProps {
     onMarkEpisodeWatched?: (showId: number, seasonNumber: number, episodeNumber: number) => void;
 }
 
-const Colors = {
-    primary: '#E50914',
-    text: '#ffffff',
-    textSecondary: '#a0a0a0',
-    surface: '#1a1a1a',
-    surfaceLight: '#2a2a2a',
-    success: '#22c55e',
-};
+import { AppColors } from '@/src/theme/colors';
+
+const Colors = AppColors;
 
 // Reused styles or we can import them if we export them from profile.tsx
 // For simplicity, we'll accept a style object or inline the critical ones, 

@@ -7,27 +7,21 @@ import { strings } from '@/src/i18n/strings';
 import { getMovieDetails, getShowDetails } from '@/src/services/api';
 import { getPosterUrl } from '@/src/services/api/client';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
+import { AppColors } from '@/src/theme/colors';
 import { TrackedMovie, TrackedShow } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueries } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Configure calendar locale if needed, for now using default
 
-const Colors = {
-  primary: '#E50914',
-  background: '#0a0a0a',
-  surface: '#1a1a1a',
-  surfaceLight: '#2a2a2a',
-  text: '#ffffff',
-  textSecondary: '#a0a0a0',
-  success: '#22c55e',
-  blue: '#3b82f6',
-};
+// Use centralized colors
+const Colors = AppColors;
 
 // Theme object for react-native-calendars
 const calendarTheme = {

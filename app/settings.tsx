@@ -1,5 +1,15 @@
+import { strings } from '@/src/i18n/strings';
+import { getMovieDetails, getShowDetails } from '@/src/services/api';
+import { getBackdropUrl, getPosterUrl } from '@/src/services/api/client';
+import { exportWatchlistData, getExportPreview, importWatchlistData } from '@/src/services/dataExport';
+import { startOAuthFlow, signOut, isAuthenticated, getUserInfo, UserInfo } from '@/src/services/googleAuth';
+import { uploadBackup, syncFromDrive, listBackups } from '@/src/services/googleDrive';
+import { importFromTVTime, PendingImportItem, processPendingImports } from '@/src/services/tvTimeImport';
+import { useSettingsStore, useWatchlistStore } from '@/src/store';
+import { AppColors } from '@/src/theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueries } from '@tanstack/react-query';
+import { Image as ExpoImage } from 'expo-image';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -19,30 +29,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { strings } from '@/src/i18n/strings';
-import { getMovieDetails, getShowDetails } from '@/src/services/api';
-import { getBackdropUrl, getPosterUrl } from '@/src/services/api/client';
-import { exportWatchlistData, getExportPreview, importWatchlistData } from '@/src/services/dataExport';
-import { importFromTVTime, PendingImportItem, processPendingImports } from '@/src/services/tvTimeImport';
-import { useSettingsStore, useWatchlistStore } from '@/src/store';
-import { startOAuthFlow, signOut, isAuthenticated, getUserInfo, UserInfo } from '@/src/services/googleAuth';
-import { uploadBackup, syncFromDrive, listBackups } from '@/src/services/googleDrive';
 
-
-// Theme colors
-const Colors = {
-  background: '#0a0a0a',
-  surface: '#1a1a1a',
-  surfaceLight: '#2a2a2a',
-  primary: '#E50914',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#a0a0a0',
-  textMuted: '#666666',
-  success: '#22c55e',
-  error: '#ef4444',
-  warning: '#f59e0b',
-  border: '#333333',
-};
+// Use centralized colors
+const Colors = AppColors;
 
 function MatchDetailView({ id, type }: { id: number, type: 'movie' | 'show' }) {
   const { data: item, isLoading } = useQuery<any>({
@@ -66,18 +55,19 @@ function MatchDetailView({ id, type }: { id: number, type: 'movie' | 'show' }) {
     <View style={styles.detailCard}>
       {/* Backdrop */}
       {item.backdrop_path && (
-        <Image 
+        <ExpoImage 
           source={{ uri: getBackdropUrl(item.backdrop_path) || '' }} 
           style={styles.detailBackdrop}
-          resizeMode="cover"
+          contentFit="cover"
         />
       )}
       
       <View style={styles.detailContent}>
         <View style={styles.detailHeader}>
-          <Image 
+          <ExpoImage 
             source={{ uri: getPosterUrl(item.poster_path, 'medium') || '' }} 
-            style={styles.detailPoster} 
+            style={styles.detailPoster}
+            contentFit="cover"
           />
           <View style={styles.detailHeaderInfo}>
             <Text style={styles.detailTitle}>{title}</Text>

@@ -2,25 +2,19 @@
  * Book Details Screen
  */
 
-import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
-import { Stack, useLocalSearchParams } from 'expo-router';
-import React from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking } from 'react-native';
-
 import { strings } from '@/src/i18n/strings';
 import { getBookDetails } from '@/src/services/api/books';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
+import { AppColors } from '@/src/theme/colors';
+import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import React from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View, Linking } from 'react-native';
 
-const Colors = {
-  primary: '#E50914',
-  background: '#0a0a0a',
-  surface: '#1a1a1a',
-  text: '#ffffff',
-  textSecondary: '#a0a0a0',
-  success: '#22c55e',
-  blue: '#3b82f6',
-};
+// Use centralized colors
+const Colors = AppColors;
 
 export default function BookDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -127,7 +121,7 @@ export default function BookDetailsScreen() {
           <Image 
             source={{ uri: book.imageLinks?.thumbnail || 'https://via.placeholder.com/128x192?text=No+Cover' }} 
             style={styles.poster} 
-            resizeMode="cover"
+            contentFit="cover"
           />
           <View style={styles.infoText}>
             <Text style={styles.title}>{book.title}</Text>

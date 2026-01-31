@@ -4,6 +4,7 @@
 
 import { getMovieDetails, getShowDetails } from '@/src/services/api';
 import { useNotificationStore, useSettingsStore, useWatchlistStore } from '@/src/store';
+import { AppColors } from '@/src/theme/colors';
 import { TrackedMovie, TrackedShow, TrackedBook, TrackedManga, TrackingStatus } from '@/src/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueries } from '@tanstack/react-query';
@@ -20,15 +21,8 @@ import ShowItem from '../components/ShowItem';
 import UpcomingShowItem from '../components/UpcomingShowItem';
 import { strings } from '@/src/i18n/strings';
 
-const Colors = {
-  primary: '#E50914',
-  background: '#0a0a0a',
-  surface: '#1a1a1a',
-  surfaceLight: '#2a2a2a',
-  text: '#ffffff',
-  textSecondary: '#a0a0a0',
-  success: '#22c55e',
-};
+// Use centralized colors
+const Colors = AppColors;
 
 type SortOption = 'name' | 'date' | 'status' | 'added';
 
@@ -1341,6 +1335,7 @@ export default function ProfileScreen() {
           removeClippedSubviews={true}
           data={filteredBooks}
           keyExtractor={(item) => item.id}
+          getItemLayout={(data, index) => ({ length: 152, offset: 152 * index, index })}
           renderItem={renderBookItem}
           contentContainerStyle={styles.listContent}
           style={{ flex: 1 }}
@@ -1361,6 +1356,7 @@ export default function ProfileScreen() {
           removeClippedSubviews={true}
           data={filteredManga}
           keyExtractor={(item) => item.id.toString()}
+          getItemLayout={(data, index) => ({ length: 152, offset: 152 * index, index })}
           renderItem={renderMangaItem}
           contentContainerStyle={styles.listContent}
           style={{ flex: 1 }}
