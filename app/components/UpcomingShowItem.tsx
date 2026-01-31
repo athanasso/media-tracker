@@ -100,7 +100,7 @@ const UpcomingShowItem = memo(({
 });
 
 const styles = StyleSheet.create({
-  itemCard: { flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: 12, padding: 12, marginBottom: 12, gap: 12, alignItems: 'center' },
+  itemCard: { flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: 12, padding: 12, marginBottom: 12, gap: 12, alignItems: 'center', height: 114 },
   itemPoster: { width: 60, height: 90, borderRadius: 8, backgroundColor: Colors.surfaceLight },
   itemInfo: { flex: 1, gap: 4 },
   itemTitle: { fontSize: 15, fontWeight: '600', color: Colors.text },

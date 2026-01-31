@@ -1278,6 +1278,7 @@ export default function ProfileScreen() {
           removeClippedSubviews={true}
           data={filteredShows}
           keyExtractor={(item) => item.showId.toString()}
+          getItemLayout={(data, index) => ({ length: 126, offset: 126 * index, index })}
           renderItem={renderShowOrUpcomingItem}
           contentContainerStyle={styles.listContent}
           style={{ flex: 1 }}
@@ -1307,6 +1308,7 @@ export default function ProfileScreen() {
           removeClippedSubviews={true}
           data={filteredMovies}
           keyExtractor={(item) => item.movieId.toString()}
+          getItemLayout={(data, index) => ({ length: 126, offset: 126 * index, index })}
           renderItem={renderMovieItem}
           contentContainerStyle={styles.listContent}
           style={{ flex: 1 }}
