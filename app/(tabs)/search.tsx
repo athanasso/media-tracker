@@ -4,14 +4,15 @@
  */
 
 import { useDebouncedValue } from '@/src/hooks/useDebounce';
+import { AppColors } from '@/src/theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Keyboard,
   StyleSheet,
   Text,
@@ -29,16 +30,8 @@ import { getPosterUrl } from '@/src/services/api/client';
 import { useSettingsStore, useWatchlistStore } from '@/src/store';
 import { MultiSearchResult, Book, Manga } from '@/src/types';
 
-// App colors
-const Colors = {
-  primary: '#E50914',
-  background: '#0a0a0a',
-  surface: '#1a1a1a',
-  surfaceLight: '#2a2a2a',
-  text: '#ffffff',
-  textSecondary: '#a0a0a0',
-  border: '#333333',
-};
+// Use centralized colors
+const Colors = AppColors;
 
 type SearchType = 'tv_movie' | 'book' | 'manga';
 
@@ -117,7 +110,7 @@ export default function SearchScreen() {
 
     if (!status) return null;
 
-    let color = Colors.primary;
+    let color: string = Colors.primary;
     let label = '';
 
     switch (status) {
@@ -262,11 +255,11 @@ export default function SearchScreen() {
         activeOpacity={0.7}
       >
         <Image
-          source={{ 
-            uri: posterUrl || 'https://via.placeholder.com/92x138/1a1a1a/666666?text=No+Image' 
-          }}
+          source={{ uri: posterUrl || undefined }}
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
           style={styles.resultPoster}
-          resizeMode="cover"
+          contentFit="cover"
+          transition={200}
         />
         <View style={styles.resultInfo}>
           <View style={styles.resultHeader}>

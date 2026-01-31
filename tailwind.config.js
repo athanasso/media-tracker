@@ -8,17 +8,17 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Dark Mode Theme
-        background: '#121212',
-        surface: '#1E1E1E',
-        surfaceLight: '#2A2A2A',
+        // Dark Mode Theme - Aligned with src/theme/colors.ts
+        background: '#0a0a0a',
+        surface: '#1a1a1a',
+        surfaceLight: '#2a2a2a',
         surfaceElevated: '#333333',
         
-        // Primary (Yellow accent)
+        // Primary (Netflix-style red accent)
         primary: {
-          DEFAULT: '#F5C518',
-          dark: '#D4A817',
-          light: '#FFD93D',
+          DEFAULT: '#E50914',
+          dark: '#B30710',
+          light: '#FF1A22',
         },
         
         // Text colors
@@ -32,8 +32,15 @@ module.exports = {
         error: '#EF4444',
         info: '#3B82F6',
         
+        // Tracking status colors
+        statusWatching: '#22C55E',
+        statusCompleted: '#3B82F6',
+        statusPlanToWatch: '#F59E0B',
+        statusOnHold: '#8B5CF6',
+        statusDropped: '#EF4444',
+        
         // Border
-        border: '#3A3A3A',
+        border: '#333333',
       },
       fontFamily: {
         sans: ['Inter', 'System'],
@@ -51,3 +58,4 @@ module.exports = {
   },
   plugins: [],
 };
+

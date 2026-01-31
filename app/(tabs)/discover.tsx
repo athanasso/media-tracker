@@ -3,15 +3,16 @@
  * Displays trending shows and movies in horizontal scroll sections
  */
 
+import { AppColors } from '@/src/theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
   Dimensions,
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -38,14 +39,8 @@ const POSTER_WIDTH = 130;
 const POSTER_HEIGHT = 195;
 const FEATURED_HEIGHT = 450;
 
-// App colors
-const Colors = {
-  primary: '#E50914',
-  background: '#0a0a0a',
-  surface: '#1a1a1a',
-  text: '#ffffff',
-  textSecondary: '#a0a0a0',
-};
+// Use centralized colors
+const Colors = AppColors;
 
 export default function DiscoverScreen() {
   const router = useRouter();
@@ -159,13 +154,14 @@ export default function DiscoverScreen() {
         {featuredItem && (
           <TouchableOpacity
             style={styles.featuredContainer}
-            onPress={() => navigateToDetails(featuredItem, featuredItem.media_type)}
+            onPress={() => navigateToDetails(featuredItem, featuredItem.media_type as 'tv' | 'movie')}
             activeOpacity={0.9}
           >
             <Image
-              source={{ uri: getBackdropUrl(featuredItem.backdrop_path, 'large') || '' }}
+              source={{ uri: getBackdropUrl(featuredItem.backdrop_path, 'large') || undefined }}
               style={styles.featuredImage}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={300}
             />
             <LinearGradient
               colors={['transparent', 'rgba(10,10,10,0.8)', Colors.background]}
@@ -186,7 +182,7 @@ export default function DiscoverScreen() {
               <View style={styles.featuredActions}>
                 <TouchableOpacity 
                   style={styles.playButton}
-                  onPress={() => navigateToDetails(featuredItem, featuredItem.media_type)}
+                  onPress={() => navigateToDetails(featuredItem, featuredItem.media_type as 'tv' | 'movie')}
                 >
                   <Ionicons name="information-circle" size={20} color="#000" />
                   <Text style={styles.playButtonText}>{t.details}</Text>
@@ -206,7 +202,7 @@ export default function DiscoverScreen() {
         <MediaRow
           title={t.trendingThisWeek}
           data={trendingAll?.results?.slice(1, 15)}
-          onItemPress={(item) => navigateToDetails(item, (item as TrendingItem).media_type)}
+          onItemPress={(item) => navigateToDetails(item, (item as TrendingItem).media_type as 'tv' | 'movie')}
           showMediaType
         />
 
@@ -272,9 +268,11 @@ function MediaRow({ title, data, onItemPress, showMediaType }: MediaRowProps) {
             activeOpacity={0.8}
           >
             <Image
-              source={{ uri: getPosterUrl(item.poster_path, 'medium') || '' }}
+              source={{ uri: getPosterUrl(item.poster_path, 'medium') || undefined }}
               style={styles.posterImage}
-              resizeMode="cover"
+              contentFit="cover"
+              placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+              transition={200}
             />
             {showMediaType && 'media_type' in item && (
               <View style={styles.mediaTypeBadge}>

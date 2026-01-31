@@ -1,25 +1,15 @@
 /**
  * Tab Navigator Layout
- * Bottom tabs: Discover, Search, Profile
+ * Bottom tabs: Discover, Search, Calendar, Profile
  */
 
 import { strings } from '@/src/i18n/strings';
 import { useSettingsStore } from '@/src/store';
+import { AppColors } from '@/src/theme/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet } from 'react-native';
-
-// App colors
-const Colors = {
-  primary: '#E50914', // Netflix-style red accent
-  background: '#0a0a0a',
-  surface: '#1a1a1a',
-  tabBar: 'rgba(10, 10, 10, 0.95)',
-  text: '#ffffff',
-  textSecondary: '#a0a0a0',
-  inactive: '#6b6b6b',
-};
 
 export default function TabLayout() {
   const language = useSettingsStore(state => state.language);
@@ -29,10 +19,10 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.inactive,
+        tabBarActiveTintColor: AppColors.primary,
+        tabBarInactiveTintColor: AppColors.inactive,
         tabBarStyle: {
-          backgroundColor: Colors.tabBar,
+          backgroundColor: AppColors.tabBar,
           borderTopColor: 'rgba(255, 255, 255, 0.1)',
           borderTopWidth: StyleSheet.hairlineWidth,
           height: Platform.OS === 'ios' ? 88 : 65,
@@ -59,8 +49,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
-
 
       {/* Search Tab */}
       <Tabs.Screen
@@ -107,9 +95,8 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Hide default screens from tabs */}
+      {/* Hide default index screen from tabs */}
       <Tabs.Screen name="index" options={{ href: null }} />
-      <Tabs.Screen name="explore" options={{ href: null }} />
     </Tabs>
   );
 }
