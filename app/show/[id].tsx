@@ -28,8 +28,10 @@ import {
     Text,
     TouchableOpacity,
     View,
-    FlatList,
 } from 'react-native';
+
+import { SeasonSelector } from '@/app/components/show/SeasonSelector';
+import { EpisodeItem } from '@/app/components/show/EpisodeItem';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BACKDROP_HEIGHT = SCREEN_HEIGHT * 0.45;
@@ -604,47 +606,12 @@ export default function ShowDetailsScreen() {
             )}
           </View>
             
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
-              contentContainerStyle={styles.seasonScroll}
-            >
-              {seasons.map((s) => {
-                const progress = getSeasonProgressValue(s.season_number, s.episode_count);
-                const isSelected = selectedSeason === s.season_number;
-                
-                return (
-                  <TouchableOpacity
-                key={s.id}
-                style={[styles.seasonChip, selectedSeason === s.season_number && styles.seasonChipActive]}
-                onPress={() => setSelectedSeason(s.season_number)}
-              >
-                {/* Check if name is redundant with "Season N" label */}
-                {(s.name !== `Season ${s.season_number}` && s.name !== `${t.season} ${s.season_number}`) ? (
-                    <View style={{ alignItems: 'center' }}>
-                         <Text style={[
-                             styles.seasonChipLabel, 
-                             selectedSeason === s.season_number && styles.seasonChipTextActive
-                         ]}>
-                           {t.season} {s.season_number}
-                         </Text>
-                         <Text style={[
-                             styles.seasonChipText, 
-                             selectedSeason === s.season_number && styles.seasonChipTextActive,
-                             { fontSize: 15 } // Slightly larger title for named seasons
-                         ]}>
-                           {s.name}
-                         </Text>
-                    </View>
-                ) : (
-                    <Text style={[styles.seasonChipText, selectedSeason === s.season_number && styles.seasonChipTextActive]}>
-                       {s.name}
-                    </Text>
-                )}
-              </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            <SeasonSelector 
+              seasons={seasons} 
+              selectedSeason={selectedSeason} 
+              onSelect={setSelectedSeason} 
+              t={t} 
+            />
           </View>
         )}
 
@@ -708,52 +675,20 @@ export default function ShowDetailsScreen() {
                 style={{ height: 400 }}
                 showsVerticalScrollIndicator={true}
               >
-                {episodes.map((episode: Episode, index) => {
+                {episodes.map((episode: Episode) => {
                     const isWatched = checkEpisodeWatched(episode.season_number, episode.episode_number);
                     const hasAired = episode.air_date ? new Date(episode.air_date) <= new Date() : false;
 
                     return (
-                        <Pressable
+                        <EpisodeItem 
                             key={episode.id}
-                            style={({ pressed }) => [
-                            styles.episodeCard,
-                            pressed && styles.episodeCardPressed,
-                            isWatched && styles.episodeCardWatched,
-                            { height: 80 } // Force fixed height for consistent scrolling
-                            ]}
-                            onPress={() => hasAired && handleToggleEpisode(episode)}
-                            onLongPress={() => hasAired && handleMarkPreviousWatched(episode)}
-                            delayLongPress={500}
-                            disabled={!hasAired}
-                        >
-                            <View style={styles.episodeMain}>
-                                <View style={styles.episodeNumber}>
-                                <Text style={styles.episodeNumberText}>{episode.episode_number}</Text>
-                                </View>
-                                <View style={styles.episodeInfo}>
-                                <Text style={styles.episodeTitle} numberOfLines={1}>{episode.name}</Text>
-                                {episode.air_date && (
-                                    <Text style={styles.episodeDate}>{getFormattedDate(episode.air_date)}</Text>
-                                )}
-                                </View>
-                                <TouchableOpacity
-                                style={[
-                                    styles.watchedCheckbox,
-                                    isWatched && styles.watchedCheckboxActive,
-                                    !hasAired && styles.watchedCheckboxDisabled,
-                                ]}
-                                onPress={() => hasAired && handleToggleEpisode(episode)}
-                                disabled={!hasAired}
-                                activeOpacity={0.7}
-                                >
-                                {isWatched ? (
-                                    <Ionicons name="checkmark" size={18} color={Colors.text} />
-                                ) : (
-                                    <View style={styles.checkboxEmpty} />
-                                )}
-                                </TouchableOpacity>
-                            </View>
-                        </Pressable>
+                            episode={episode}
+                            isWatched={isWatched}
+                            hasAired={hasAired}
+                            onToggle={handleToggleEpisode}
+                            onLongPress={handleMarkPreviousWatched}
+                            getFormattedDate={getFormattedDate}
+                        />
                     );
                 })}
               </ScrollView>
@@ -1061,40 +996,7 @@ const styles = StyleSheet.create({
     color: Colors.success,
     fontWeight: '600',
   },
-  seasonScroll: {
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  seasonChip: {
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  seasonChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  seasonChipText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  seasonChipLabel: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  seasonChipTextActive: {
-    color: Colors.text,
-  },
+
 
   // Episodes
   episodesHeader: {
@@ -1229,83 +1131,8 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 16,
   },
-  episodeCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderLeftWidth: 3,
-    borderLeftColor: 'transparent', 
-  },
-  episodeCardPressed: {
-    opacity: 0.8,
-  },
-  episodeCardWatched: {
-    backgroundColor: Colors.surfaceLight,
-    borderLeftColor: Colors.success,
-  },
-  episodeMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    gap: 12,
-  },
-  episodeNumber: {
-    backgroundColor: Colors.surfaceElevated,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    minWidth: 28,
-    alignItems: 'center',
-  },
-  episodeNumberText: {
-    color: Colors.primary,
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  episodeInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  episodeTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  episodeDate: {
-    fontSize: 11,
-    color: Colors.textMuted,
-  },
-  episodeOverview: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    lineHeight: 18,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
 
-  // Watched Checkbox
-  watchedCheckbox: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 16,
-    backgroundColor: Colors.surfaceLight,
-  },
-  watchedCheckboxActive: {
-    backgroundColor: Colors.success,
-  },
-  watchedCheckboxDisabled: {
-    backgroundColor: Colors.surface,
-    opacity: 0.5,
-  },
-  checkboxEmpty: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: Colors.textMuted,
-  },
+
   trackedButton: {
     backgroundColor: Colors.success,
   },

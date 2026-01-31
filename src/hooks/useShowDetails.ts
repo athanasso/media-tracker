@@ -49,7 +49,7 @@ export function useShowDetails({
     queryKey: ['show', showId],
     queryFn: () => getShowDetails(showId, ['credits', 'similar', 'videos']),
     enabled: enabled && !!showId,
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 60, // 1 hour
   });
 
   // Fetch season details with episodes
@@ -63,7 +63,7 @@ export function useShowDetails({
     queryKey: ['season', showId, selectedSeason],
     queryFn: () => getSeasonDetails(showId, selectedSeason),
     enabled: enabled && !!showId && selectedSeason > 0,
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 60, // 1 hour
   });
 
   return {

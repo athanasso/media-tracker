@@ -14,6 +14,12 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ProfileHeader } from '@/app/components/profile/ProfileHeader';
+import { TabSelector } from '@/app/components/profile/TabSelector';
+import { SearchAndSort } from '@/app/components/profile/SearchAndSort';
+import { SubTabSelector } from '@/app/components/profile/SubTabSelector';
+
 import BookItem from '../components/BookItem';
 import MangaItem from '../components/MangaItem';
 import MovieItem from '../components/MovieItem';
@@ -965,281 +971,107 @@ export default function ProfileScreen() {
   };
 
   /* Header Content for FlashList */
-  const headerContent = useMemo(() => (
-    <View>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t.profile}</Text>
-        <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/settings')}>
-          <Ionicons name="settings-outline" size={24} color={Colors.text} />
-        </TouchableOpacity>
+  const headerContent = useMemo(() => {
+    const currentSearch = activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : activeTab === 'books' ? booksSearch : activeTab === 'manga' ? mangaSearch : activeTab === 'plan' ? planSearch : favoritesSearch;
+    const handleSearchChange = activeTab === 'shows' ? setShowsSearch : activeTab === 'movies' ? setMoviesSearch : activeTab === 'books' ? setBooksSearch : activeTab === 'manga' ? setMangaSearch : activeTab === 'plan' ? setPlanSearch : setFavoritesSearch;
+
+    let subTabs: { value: string; label: string }[] = [];
+    let currentSubTabValue = '';
+    let handleSubTabChange: (val: string) => void = () => {};
+
+    if (activeTab === 'shows') {
+        subTabs = [
+            { value: 'watched', label: t.watched },
+            { value: 'in_progress', label: t.inProgress },
+            { value: 'upcoming', label: t.upcoming },
+            ...(showDroppedTab ? [{ value: 'dropped', label: t.statusDropped }] : [])
+        ];
+        currentSubTabValue = showsSubTab;
+        handleSubTabChange = setShowsSubTab as any;
+    } else if (activeTab === 'movies') {
+        subTabs = [
+            { value: 'watched', label: t.watched },
+            { value: 'upcoming', label: t.upcoming },
+            ...(showDroppedTab ? [{ value: 'dropped', label: t.statusDropped }] : [])
+        ];
+        currentSubTabValue = moviesSubTab;
+        handleSubTabChange = setMoviesSubTab as any;
+    } else if (activeTab === 'books') {
+        subTabs = [
+            { value: 'reading', label: t.reading },
+            { value: 'read', label: t.read },
+            { value: 'plan_to_read', label: t.planToRead },
+            ...(showDroppedTab ? [{ value: 'dropped', label: t.statusDropped }] : [])
+        ];
+        currentSubTabValue = booksSubTab;
+        handleSubTabChange = setBooksSubTab as any;
+    } else if (activeTab === 'manga') {
+        subTabs = [
+            { value: 'reading', label: t.reading },
+            { value: 'read', label: t.read },
+            { value: 'plan_to_read', label: t.planToRead },
+            ...(showDroppedTab ? [{ value: 'dropped', label: t.statusDropped }] : [])
+        ];
+        currentSubTabValue = mangaSubTab;
+        handleSubTabChange = setMangaSubTab as any;
+    } else if (activeTab === 'favorites') {
+        subTabs = [
+            { value: 'all', label: t.all },
+            { value: 'shows', label: t.shows },
+            { value: 'movies', label: t.movies },
+            { value: 'books', label: t.books },
+            { value: 'manga', label: t.manga },
+        ];
+        currentSubTabValue = favoritesSubTab;
+        handleSubTabChange = setFavoritesSubTab as any;
+    } else if (activeTab === 'plan') {
+         subTabs = [
+            { value: 'all', label: t.all },
+            { value: 'shows', label: t.shows },
+            { value: 'movies', label: t.movies },
+            { value: 'books', label: t.books },
+            { value: 'manga', label: t.manga },
+        ];
+        currentSubTabValue = planSubTab;
+        handleSubTabChange = setPlanSubTab as any;
+    }
+
+    return (
+      <View>
+        <ProfileHeader title={t.profile} />
+        
+        <TabSelector 
+            activeTab={activeTab} 
+            onTabChange={setActiveTab} 
+            t={t}
+            showBooks={showBooks}
+            showManga={showManga}
+            showFavorites={showFavorites}
+        />
+
+        <SearchAndSort 
+            value={currentSearch} 
+            onChangeText={handleSearchChange} 
+            placeholder={t.search} 
+            isSortMenuOpen={showSortMenu === activeTab}
+            onToggleSortMenu={() => setShowSortMenu(showSortMenu === activeTab ? null : activeTab)}
+        />
+        
+        {renderSortMenu(activeTab)}
+
+        <SubTabSelector 
+            options={subTabs} 
+            selectedValue={currentSubTabValue} 
+            onValueChange={handleSubTabChange} 
+        />
       </View>
-
-      {/* Main Tabs */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'shows' && styles.activeTab]} 
-          onPress={() => setActiveTab('shows')}
-        >
-          <Text style={[styles.tabText, activeTab === 'shows' && styles.activeTabText]}>{t.shows}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'movies' && styles.activeTab]} 
-          onPress={() => setActiveTab('movies')}
-        >
-          <Text style={[styles.tabText, activeTab === 'movies' && styles.activeTabText]}>{t.movies}</Text>
-        </TouchableOpacity>
-
-        {showBooks && (
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'books' && styles.activeTab]} 
-              onPress={() => setActiveTab('books')}
-            >
-              <Text style={[styles.tabText, activeTab === 'books' && styles.activeTabText]}>{t.books}</Text>
-            </TouchableOpacity>
-        )}
-
-        {showManga && (
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'manga' && styles.activeTab]} 
-              onPress={() => setActiveTab('manga')}
-            >
-              <Text style={[styles.tabText, activeTab === 'manga' && styles.activeTabText]}>{t.manga}</Text>
-            </TouchableOpacity>
-        )}
-
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'plan' && styles.activeTab]} 
-          onPress={() => setActiveTab('plan')}
-        >
-          <Text style={[styles.tabText, activeTab === 'plan' && styles.activeTabText]}>{t.planToWatch}</Text>
-        </TouchableOpacity>
-
-        {showFavorites && (
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'favorites' && styles.activeTab]} 
-            onPress={() => setActiveTab('favorites')}
-          >
-            <Text style={[styles.tabText, activeTab === 'favorites' && styles.activeTabText]}>{t.favorites}</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Search and Sort Bar */}
-      <View style={styles.searchSortContainer}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={20} color={Colors.textSecondary} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={t.search}
-            placeholderTextColor={Colors.textSecondary}
-            value={activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : activeTab === 'books' ? booksSearch : activeTab === 'manga' ? mangaSearch : activeTab === 'plan' ? planSearch : favoritesSearch}
-            onChangeText={activeTab === 'shows' ? setShowsSearch : activeTab === 'movies' ? setMoviesSearch : activeTab === 'books' ? setBooksSearch : activeTab === 'manga' ? setMangaSearch : activeTab === 'plan' ? setPlanSearch : setFavoritesSearch}
-            autoCorrect={false}
-          />
-          {(activeTab === 'shows' ? showsSearch : activeTab === 'movies' ? moviesSearch : activeTab === 'books' ? booksSearch : activeTab === 'manga' ? mangaSearch : activeTab === 'plan' ? planSearch : favoritesSearch) ? (
-            <TouchableOpacity onPress={() => activeTab === 'shows' ? setShowsSearch('') : activeTab === 'movies' ? setMoviesSearch('') : activeTab === 'books' ? setBooksSearch('') : activeTab === 'manga' ? setMangaSearch('') : activeTab === 'plan' ? setPlanSearch('') : setFavoritesSearch('')}>
-              <Ionicons name="close-circle" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-        <TouchableOpacity
-          style={styles.sortButton}
-          onPress={() => setShowSortMenu(showSortMenu === activeTab ? null : activeTab)}
-        >
-          <Ionicons name="options-outline" size={20} color={Colors.text} />
-        </TouchableOpacity>
-      </View>
-      {renderSortMenu(activeTab)}
-
-      {/* Sub Tabs */}
-      {activeTab === 'shows' && (
-        <View style={styles.subTabContainer}>
-          <TouchableOpacity 
-            style={[styles.subTab, showsSubTab === 'watched' && styles.activeSubTab]} 
-            onPress={() => setShowsSubTab('watched')}
-          >
-            <Text style={[styles.subTabText, showsSubTab === 'watched' && styles.activeSubTabText]}>{t.watched}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, showsSubTab === 'in_progress' && styles.activeSubTab]} 
-            onPress={() => setShowsSubTab('in_progress')}
-          >
-            <Text style={[styles.subTabText, showsSubTab === 'in_progress' && styles.activeSubTabText]}>{t.inProgress}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, showsSubTab === 'upcoming' && styles.activeSubTab]} 
-            onPress={() => setShowsSubTab('upcoming')}
-          >
-            <Text style={[styles.subTabText, showsSubTab === 'upcoming' && styles.activeSubTabText]}>{t.upcoming}</Text>
-          </TouchableOpacity>
-          {showDroppedTab && (
-            <TouchableOpacity 
-              style={[styles.subTab, showsSubTab === 'dropped' && styles.activeSubTab]} 
-              onPress={() => setShowsSubTab('dropped')}
-            >
-              <Text style={[styles.subTabText, showsSubTab === 'dropped' && styles.activeSubTabText]}>{t.statusDropped}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {activeTab === 'movies' && (
-        <View style={styles.subTabContainer}>
-          <TouchableOpacity 
-            style={[styles.subTab, moviesSubTab === 'watched' && styles.activeSubTab]} 
-            onPress={() => setMoviesSubTab('watched')}
-          >
-            <Text style={[styles.subTabText, moviesSubTab === 'watched' && styles.activeSubTabText]}>{t.watched}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, moviesSubTab === 'upcoming' && styles.activeSubTab]} 
-            onPress={() => setMoviesSubTab('upcoming')}
-          >
-            <Text style={[styles.subTabText, moviesSubTab === 'upcoming' && styles.activeSubTabText]}>{t.upcoming}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {activeTab === 'books' && (
-        <View style={styles.subTabContainer}>
-          <TouchableOpacity 
-            style={[styles.subTab, booksSubTab === 'reading' && styles.activeSubTab]} 
-            onPress={() => setBooksSubTab('reading')}
-          >
-            <Text style={[styles.subTabText, booksSubTab === 'reading' && styles.activeSubTabText]}>{t.reading}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, booksSubTab === 'read' && styles.activeSubTab]} 
-            onPress={() => setBooksSubTab('read')}
-          >
-            <Text style={[styles.subTabText, booksSubTab === 'read' && styles.activeSubTabText]}>{t.read}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, booksSubTab === 'plan_to_read' && styles.activeSubTab]} 
-            onPress={() => setBooksSubTab('plan_to_read')}
-          >
-            <Text style={[styles.subTabText, booksSubTab === 'plan_to_read' && styles.activeSubTabText]}>{t.planToRead}</Text>
-          </TouchableOpacity>
-           {showDroppedTab && (
-            <TouchableOpacity 
-              style={[styles.subTab, booksSubTab === 'dropped' && styles.activeSubTab]} 
-              onPress={() => setBooksSubTab('dropped')}
-            >
-              <Text style={[styles.subTabText, booksSubTab === 'dropped' && styles.activeSubTabText]}>{t.statusDropped}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {activeTab === 'manga' && (
-        <View style={styles.subTabContainer}>
-          <TouchableOpacity 
-            style={[styles.subTab, mangaSubTab === 'reading' && styles.activeSubTab]} 
-            onPress={() => setMangaSubTab('reading')}
-          >
-            <Text style={[styles.subTabText, mangaSubTab === 'reading' && styles.activeSubTabText]}>{t.reading}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, mangaSubTab === 'read' && styles.activeSubTab]} 
-            onPress={() => setMangaSubTab('read')}
-          >
-            <Text style={[styles.subTabText, mangaSubTab === 'read' && styles.activeSubTabText]}>{t.read}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, mangaSubTab === 'plan_to_read' && styles.activeSubTab]} 
-            onPress={() => setMangaSubTab('plan_to_read')}
-          >
-            <Text style={[styles.subTabText, mangaSubTab === 'plan_to_read' && styles.activeSubTabText]}>{t.planToRead}</Text>
-          </TouchableOpacity>
-           {showDroppedTab && (
-            <TouchableOpacity 
-              style={[styles.subTab, mangaSubTab === 'dropped' && styles.activeSubTab]} 
-              onPress={() => setMangaSubTab('dropped')}
-            >
-              <Text style={[styles.subTabText, mangaSubTab === 'dropped' && styles.activeSubTabText]}>{t.statusDropped}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-
-      {activeTab === 'favorites' && (
-        <View style={styles.subTabContainer}>
-            <TouchableOpacity 
-            style={[styles.subTab, favoritesSubTab === 'all' && styles.activeSubTab]} 
-            onPress={() => setFavoritesSubTab('all')}
-          >
-            <Text style={[styles.subTabText, favoritesSubTab === 'all' && styles.activeSubTabText]}>{t.all}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, favoritesSubTab === 'shows' && styles.activeSubTab]} 
-            onPress={() => setFavoritesSubTab('shows')}
-          >
-            <Text style={[styles.subTabText, favoritesSubTab === 'shows' && styles.activeSubTabText]}>{t.shows}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, favoritesSubTab === 'movies' && styles.activeSubTab]} 
-            onPress={() => setFavoritesSubTab('movies')}
-          >
-            <Text style={[styles.subTabText, favoritesSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, favoritesSubTab === 'books' && styles.activeSubTab]} 
-            onPress={() => setFavoritesSubTab('books')}
-          >
-            <Text style={[styles.subTabText, favoritesSubTab === 'books' && styles.activeSubTabText]}>{t.books}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, favoritesSubTab === 'manga' && styles.activeSubTab]} 
-            onPress={() => setFavoritesSubTab('manga')}
-          >
-            <Text style={[styles.subTabText, favoritesSubTab === 'manga' && styles.activeSubTabText]}>{t.manga}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {activeTab === 'plan' && (
-        <View style={styles.subTabContainer}>
-          <TouchableOpacity 
-            style={[styles.subTab, planSubTab === 'all' && styles.activeSubTab]} 
-            onPress={() => setPlanSubTab('all')}
-          >
-            <Text style={[styles.subTabText, planSubTab === 'all' && styles.activeSubTabText]}>{t.all}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, planSubTab === 'shows' && styles.activeSubTab]} 
-            onPress={() => setPlanSubTab('shows')}
-          >
-            <Text style={[styles.subTabText, planSubTab === 'shows' && styles.activeSubTabText]}>{t.shows}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, planSubTab === 'movies' && styles.activeSubTab]} 
-            onPress={() => setPlanSubTab('movies')}
-          >
-            <Text style={[styles.subTabText, planSubTab === 'movies' && styles.activeSubTabText]}>{t.movies}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, planSubTab === 'books' && styles.activeSubTab]} 
-            onPress={() => setPlanSubTab('books')}
-          >
-            <Text style={[styles.subTabText, planSubTab === 'books' && styles.activeSubTabText]}>{t.books}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.subTab, planSubTab === 'manga' && styles.activeSubTab]} 
-            onPress={() => setPlanSubTab('manga')}
-          >
-            <Text style={[styles.subTabText, planSubTab === 'manga' && styles.activeSubTabText]}>{t.manga}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  ), [
+    );
+  }, [
     activeTab, 
     showsSubTab, moviesSubTab, booksSubTab, mangaSubTab, favoritesSubTab, planSubTab,
     showsSearch, moviesSearch, booksSearch, mangaSearch, planSearch, favoritesSearch,
     showSortMenu, showsSort, moviesSort, booksSort, mangaSort, planSort, favoritesSort,
-    showBooks, showManga, showDroppedTab,
+    showBooks, showManga, showDroppedTab, showFavorites,
     t
   ]);
 
